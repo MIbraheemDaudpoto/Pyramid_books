@@ -1,0 +1,197 @@
+PROJECT: Pyramid Books Distribution Console
+STACK: Node.js, Express.js, EJS, SQLite/MySQL (use existing DB), Bootstrap or Tailwind (whichever project uses)
+
+GOAL:
+Improve UI/UX, Add Salesman Stock Management, CSV Import/Export, and Reporting System.
+
+----------------------------------------------------
+🎨 1. UI/UX IMPROVEMENT
+----------------------------------------------------
+
+Improve overall UI design to look modern, professional, and clean.
+
+Requirements:
+
+• Apply a consistent color palette suitable for book distribution / education domain:
+  - Primary Color: Deep Navy / Dark Blue (#0B1D39 or similar)
+  - Secondary Color: Soft Cream / Light Beige (#F5F3EE or similar)
+  - Accent Color: Royal Blue (#2563EB or similar)
+  - Success Color: Green (#22C55E)
+  - Danger Color: Red (#EF4444)
+
+• Improve:
+  - Navbar styling
+  - Sidebar hover effects
+  - Button styles
+  - Card layouts
+  - Table designs
+  - Form input styles
+  - Status badges
+  - Search bar styling
+
+• Add smooth transitions & hover animations.
+
+• Make UI fully responsive.
+
+----------------------------------------------------
+🖼 2. ADD COMPANY LOGO
+----------------------------------------------------
+
+Use this logo in:
+- Navbar
+- Login Page
+- Sidebar Header
+
+Logo URL:
+https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRrVaGq7YabTLPqPjRWm6tID0MnYOv9-67--g&s
+
+Requirements:
+- Resize properly
+- Maintain aspect ratio
+- Add fallback if image fails to load
+
+----------------------------------------------------
+📦 3. SALESMAN STOCK MANAGEMENT MODULE
+----------------------------------------------------
+
+Create a new module ONLY for Salesman Account.
+
+Feature: "Stock Received from Companies"
+
+Companies Examples:
+- Oxford
+- Paramount
+- Gaba
+- Others (Dynamic entry allowed)
+
+Create New Table:
+salesman_stock_records
+
+Fields:
+- id
+- salesman_id
+- company_name
+- book_name
+- quantity_received
+- date_received
+- remarks
+- created_at
+
+Features:
+✔ Salesman can add stock received
+✔ Salesman can edit records
+✔ Salesman can delete records
+✔ Salesman can view stock history
+✔ Validation for numeric quantities
+✔ Date picker support
+✔ Search & filter by company & date
+
+----------------------------------------------------
+📄 4. CSV IMPORT / EXPORT
+----------------------------------------------------
+
+Add CSV support for salesman stock records.
+
+IMPORT:
+• Upload CSV file
+• Validate structure
+• Bulk insert records
+• Show success / error summary
+
+EXPORT:
+• Export filtered or full data
+• Proper column headers
+• Downloadable CSV file
+
+----------------------------------------------------
+📊 5. REPORT GENERATION
+----------------------------------------------------
+
+Allow EVERY USER ROLE to generate reports.
+
+Report Types:
+- Orders Report
+- Payments Report
+- Salesman Stock Report
+- Customer Purchase Report
+
+Filters:
+✔ Date range
+✔ Company
+✔ Salesman
+✔ Status
+
+Export Options:
+✔ PDF
+✔ CSV
+✔ Print friendly view
+
+----------------------------------------------------
+🔐 6. ROLE BASED ACCESS
+----------------------------------------------------
+
+Admin:
+- Full access
+
+Salesman:
+- Stock module access
+- Own report access
+
+Customer:
+- Only customer related reports
+
+----------------------------------------------------
+🧠 7. UX ENHANCEMENTS
+----------------------------------------------------
+
+• Add loading indicators
+• Add toast notifications
+• Add confirmation dialogs before delete
+• Pagination for tables
+• Empty state UI for no records
+
+----------------------------------------------------
+📁 8. FILE STRUCTURE (FOLLOW MVC)
+----------------------------------------------------
+
+Routes:
+routes/salesmanStockRoutes.js
+routes/reportRoutes.js
+
+Models:
+models/SalesmanStock.js
+
+Views:
+views/salesman/stock.ejs
+views/reports/index.ejs
+
+Public:
+public/css/
+public/js/
+
+----------------------------------------------------
+⚙ 9. PERFORMANCE & SECURITY
+----------------------------------------------------
+
+• Validate all inputs
+• Sanitize CSV imports
+• Prevent duplicate entries
+• Optimize database queries
+• Add error handling middleware
+
+----------------------------------------------------
+🎯 FINAL OUTPUT EXPECTATION
+----------------------------------------------------
+
+The system should feel like a professional distribution ERP dashboard with:
+
+✔ Modern UI
+✔ Organized navigation
+✔ Fast performance
+✔ Easy stock tracking
+✔ Easy report generation
+✔ Bulk CSV support
+✔ Smooth user experience
+
+Do NOT break existing modules.
+Extend functionality cleanly.
