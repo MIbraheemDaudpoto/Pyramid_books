@@ -13,6 +13,9 @@ import OrderCreate from "@/pages/OrderCreate";
 import OrderDetail from "@/pages/OrderDetail";
 import Payments from "@/pages/Payments";
 import Users from "@/pages/Users";
+import StockReceipts from "@/pages/StockReceipts";
+import Reports from "@/pages/Reports";
+import CsvImportExport from "@/pages/CsvImportExport";
 import { useMe } from "@/hooks/use-me";
 
 function HomeGate() {
@@ -40,6 +43,9 @@ function Router() {
       <Route path="/orders/:id" component={OrderDetail} />
       <Route path="/payments" component={Payments} />
       <Route path="/users" component={Users} />
+      <Route path="/stock" component={StockReceipts} />
+      <Route path="/reports" component={Reports} />
+      <Route path="/csv" component={CsvImportExport} />
 
       <Route component={NotFound} />
     </Switch>

@@ -202,6 +202,43 @@ export const fixedCustomerUsers = pgTable(
   ],
 );
 
+// ===== Stock Receipts (salesman records books from publishers) =====
+export const stockReceipts = pgTable(
+  "stock_receipts",
+  {
+    id: serial("id").primaryKey(),
+    receiptNo: varchar("receipt_no", { length: 32 }).notNull(),
+    receivedByUserId: varchar("received_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    publisher: text("publisher").notNull(),
+    notes: text("notes"),
+    receivedAt: timestamp("received_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("UQ_stock_receipts_receipt_no").on(table.receiptNo),
+    index("IDX_stock_receipts_user").on(table.receivedByUserId),
+  ],
+);
+
+export const stockReceiptItems = pgTable(
+  "stock_receipt_items",
+  {
+    id: serial("id").primaryKey(),
+    receiptId: integer("receipt_id")
+      .notNull()
+      .references(() => stockReceipts.id, { onDelete: "cascade" }),
+    bookId: integer("book_id")
+      .notNull()
+      .references(() => books.id, { onDelete: "restrict" }),
+    qty: integer("qty").notNull(),
+  },
+  (table) => [
+    index("IDX_stock_receipt_items_receipt").on(table.receiptId),
+    index("IDX_stock_receipt_items_book").on(table.bookId),
+  ],
+);
+
 // ===== Insert schemas =====
 export const insertCustomerSchema = createInsertSchema(customers).omit({
   id: true,
@@ -329,6 +366,22 @@ export type PaymentsListResponse = Array<
   }
 >;
 
+export interface CreateStockReceiptRequest {
+  publisher: string;
+  items: Array<{ bookId: number; qty: number }>;
+  notes?: string;
+}
+
+export type StockReceipt = typeof stockReceipts.$inferSelect;
+export type StockReceiptItem = typeof stockReceiptItems.$inferSelect;
+
+export interface StockReceiptWithItems extends StockReceipt {
+  items: Array<StockReceiptItem & { bookTitle: string }>;
+  receivedByName: string;
+}
+
+export type StockReceiptsListResponse = StockReceiptWithItems[];
+
 export interface DashboardResponse {
   kpis: {
     booksCount: number;
@@ -339,4 +392,12 @@ export interface DashboardResponse {
     payments30d: number;
   };
   recentOrders: OrdersListResponse;
+}
+
+export interface ReportResponse {
+  salesByMonth: Array<{ month: string; total: number; count: number }>;
+  topBooks: Array<{ bookId: number; title: string; totalQty: number; totalRevenue: number }>;
+  topCustomers: Array<{ customerId: number; name: string; totalSpent: number; orderCount: number }>;
+  outstandingBalances: Array<{ customerId: number; name: string; totalOrders: number; totalPaid: number; balance: number }>;
+  salesmanPerformance: Array<{ userId: string; name: string; orderCount: number; totalSales: number }>;
 }

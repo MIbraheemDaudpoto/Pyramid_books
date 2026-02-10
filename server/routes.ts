@@ -1,9 +1,12 @@
 import type { Express } from "express";
 import type { Server } from "http";
+import express from "express";
 import { z } from "zod";
 import { api } from "@shared/routes";
 import { storage } from "./storage";
 import { isAuthenticated, registerAuthRoutes, setupAuth } from "./replit_integrations/auth";
+
+const textParser = express.text({ type: ["text/csv", "text/plain", "application/csv"], limit: "10mb" });
 
 function getUserId(req: any): string {
   const id = req.user?.claims?.sub;
@@ -335,8 +338,340 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // Stock Receipts
+  app.get(api.stockReceipts.list.path, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const me = await storage.getCurrentUser(userId);
+      if (!me) return res.status(401).json({ message: "Unauthorized" });
+      if (me.role !== "super_admin" && me.role !== "salesman") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const list = await storage.listStockReceipts();
+      res.json(list);
+    } catch (err: any) {
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.post(api.stockReceipts.create.path, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const me = await storage.getCurrentUser(userId);
+      if (!me) return res.status(401).json({ message: "Unauthorized" });
+      if (me.role !== "super_admin" && me.role !== "salesman") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const input = api.stockReceipts.create.input.parse(req.body);
+      const created = await storage.createStockReceipt(userId, input);
+      res.status(201).json(created);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join("."),
+        });
+      }
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
+  // CSV Export/Import
+  app.get(api.csv.templateBooks.path, isAuthenticated, async (_req: any, res) => {
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=books_template.csv");
+    res.send("isbn,title,author,publisher,category,description,unitPrice,stockQty,reorderLevel\n");
+  });
+
+  app.get(api.csv.templateCustomers.path, isAuthenticated, async (_req: any, res) => {
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=customers_template.csv");
+    res.send("name,customerType,phone,email,address,creditLimit,notes\n");
+  });
+
+  app.get(api.csv.exportBooks.path, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const me = await storage.getCurrentUser(userId);
+      if (!me || me.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const booksList = await storage.listBooks();
+      const headers = ["id", "isbn", "title", "author", "publisher", "category", "description", "unitPrice", "stockQty", "reorderLevel", "isActive"];
+      const rows = booksList.map((b) =>
+        headers.map((h) => csvEscape(String((b as any)[h] ?? ""))).join(",")
+      );
+      const csv = [headers.join(","), ...rows].join("\n");
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=books.csv");
+      res.send(csv);
+    } catch (err: any) {
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.post(api.csv.importBooks.path, textParser, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const me = await storage.getCurrentUser(userId);
+      if (!me || me.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const csvText = typeof req.body === "string" ? req.body : req.body?.csv;
+      if (!csvText || typeof csvText !== "string") {
+        return res.status(400).json({ message: "CSV data required in 'csv' field" });
+      }
+
+      const rows = parseCsv(csvText);
+      if (rows.length < 2) {
+        return res.status(400).json({ message: "CSV must have a header row and at least one data row" });
+      }
+
+      const headers = rows[0].map((h) => h.trim().toLowerCase());
+      const results: { created: number; updated: number; errors: string[] } = { created: 0, updated: 0, errors: [] };
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (row.length === 0 || (row.length === 1 && row[0].trim() === "")) continue;
+        try {
+          const obj: any = {};
+          headers.forEach((h, idx) => {
+            obj[h] = row[idx]?.trim() ?? "";
+          });
+
+          const bookData: any = {
+            title: obj.title || "",
+            isbn: obj.isbn || null,
+            author: obj.author || null,
+            publisher: obj.publisher || null,
+            category: obj.category || null,
+            description: obj.description || null,
+            unitPrice: obj.unitprice || obj.unitPrice || "0",
+            stockQty: parseInt(obj.stockqty || obj.stockQty || "0") || 0,
+            reorderLevel: parseInt(obj.reorderlevel || obj.reorderLevel || "10") || 10,
+            isActive: obj.isactive !== "false" && obj.isActive !== "false",
+          };
+
+          if (!bookData.title) {
+            results.errors.push(`Row ${i + 1}: title is required`);
+            continue;
+          }
+
+          if (obj.id && obj.id !== "") {
+            await storage.updateBook(parseInt(obj.id), bookData);
+            results.updated++;
+          } else {
+            await storage.createBook(bookData);
+            results.created++;
+          }
+        } catch (e: any) {
+          results.errors.push(`Row ${i + 1}: ${e.message}`);
+        }
+      }
+
+      res.json(results);
+    } catch (err: any) {
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.get(api.csv.exportCustomers.path, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const me = await storage.getCurrentUser(userId);
+      if (!me || me.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const customersList = await storage.listCustomersForUser(userId);
+      const headers = ["id", "name", "customerType", "phone", "email", "address", "creditLimit", "notes", "assignedSalesmanUserId", "isActive"];
+      const rows = customersList.map((c) =>
+        headers.map((h) => csvEscape(String((c as any)[h] ?? ""))).join(",")
+      );
+      const csv = [headers.join(","), ...rows].join("\n");
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=customers.csv");
+      res.send(csv);
+    } catch (err: any) {
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.post(api.csv.importCustomers.path, textParser, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const me = await storage.getCurrentUser(userId);
+      if (!me || me.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const csvText = typeof req.body === "string" ? req.body : req.body?.csv;
+      if (!csvText || typeof csvText !== "string") {
+        return res.status(400).json({ message: "CSV data required in 'csv' field" });
+      }
+
+      const rows = parseCsv(csvText);
+      if (rows.length < 2) {
+        return res.status(400).json({ message: "CSV must have a header row and at least one data row" });
+      }
+
+      const headers = rows[0].map((h) => h.trim().toLowerCase());
+      const results: { created: number; updated: number; errors: string[] } = { created: 0, updated: 0, errors: [] };
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (row.length === 0 || (row.length === 1 && row[0].trim() === "")) continue;
+        try {
+          const obj: any = {};
+          headers.forEach((h, idx) => {
+            obj[h] = row[idx]?.trim() ?? "";
+          });
+
+          const custData: any = {
+            name: obj.name || "",
+            customerType: obj.customertype || obj.customerType || "fixed_customer",
+            phone: obj.phone || null,
+            email: obj.email || null,
+            address: obj.address || null,
+            creditLimit: obj.creditlimit || obj.creditLimit || "0",
+            notes: obj.notes || null,
+            assignedSalesmanUserId: obj.assignedsalesmanuserid || obj.assignedSalesmanUserId || null,
+            isActive: obj.isactive !== "false" && obj.isActive !== "false",
+          };
+
+          if (!custData.name) {
+            results.errors.push(`Row ${i + 1}: name is required`);
+            continue;
+          }
+
+          if (obj.id && obj.id !== "") {
+            await storage.updateCustomer(parseInt(obj.id), custData);
+            results.updated++;
+          } else {
+            await storage.createCustomer(custData);
+            results.created++;
+          }
+        } catch (e: any) {
+          results.errors.push(`Row ${i + 1}: ${e.message}`);
+        }
+      }
+
+      res.json(results);
+    } catch (err: any) {
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.get(api.csv.exportStock.path, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const me = await storage.getCurrentUser(userId);
+      if (!me) return res.status(401).json({ message: "Unauthorized" });
+      if (me.role !== "super_admin" && me.role !== "salesman") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const receipts = await storage.listStockReceipts();
+      const headers = ["receiptNo", "publisher", "receivedByName", "receivedAt", "bookTitle", "qty", "notes"];
+      const rows: string[] = [];
+      for (const r of receipts) {
+        for (const item of r.items) {
+          rows.push(
+            [
+              csvEscape(r.receiptNo),
+              csvEscape(r.publisher),
+              csvEscape(r.receivedByName),
+              csvEscape(r.receivedAt ? new Date(r.receivedAt).toISOString() : ""),
+              csvEscape(item.bookTitle),
+              String(item.qty),
+              csvEscape(r.notes ?? ""),
+            ].join(",")
+          );
+        }
+      }
+      const csv = [headers.join(","), ...rows].join("\n");
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=stock-receipts.csv");
+      res.send(csv);
+    } catch (err: any) {
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
+  // Reports
+  app.get(api.reports.get.path, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const me = await storage.getCurrentUser(userId);
+      if (!me) return res.status(401).json({ message: "Unauthorized" });
+      if (me.role !== "super_admin" && me.role !== "salesman") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const params = api.reports.get.input?.parse(req.query);
+      const data = await storage.getReports(params?.from, params?.to);
+      res.json(data);
+    } catch (err: any) {
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
   // Seed once on boot (safe to call repeatedly)
   await storage.seedIfEmpty();
 
   return httpServer;
+}
+
+function csvEscape(value: string): string {
+  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+    return '"' + value.replace(/"/g, '""') + '"';
+  }
+  return value;
+}
+
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  const lines = text.split("\n");
+
+  for (const line of lines) {
+    if (line.trim() === "") continue;
+    const fields: string[] = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (i + 1 < line.length && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          current += ch;
+        }
+      } else {
+        if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ",") {
+          fields.push(current);
+          current = "";
+        } else {
+          current += ch;
+        }
+      }
+    }
+    fields.push(current);
+    rows.push(fields);
+  }
+
+  return rows;
 }

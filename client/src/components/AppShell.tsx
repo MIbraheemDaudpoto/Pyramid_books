@@ -11,6 +11,9 @@ import {
   Receipt,
   Menu,
   Sparkles,
+  Package,
+  BarChart3,
+  FileSpreadsheet,
 } from "lucide-react";
 import type { Role } from "@shared/schema";
 import { useMe } from "@/hooks/use-me";
@@ -52,6 +55,9 @@ export default function AppShell(props: { children: React.ReactNode }) {
       { href: "/customers", label: "Customers", icon: Users, testId: "nav-customers", show: !!me },
       { href: "/orders", label: "Orders", icon: Receipt, testId: "nav-orders", show: !!me },
       { href: "/payments", label: "Payments", icon: CreditCard, testId: "nav-payments", show: !!me },
+      { href: "/stock", label: "Stock Receipts", icon: Package, testId: "nav-stock", show: r === "super_admin" || r === "salesman" },
+      { href: "/reports", label: "Reports", icon: BarChart3, testId: "nav-reports", show: r === "super_admin" || r === "salesman" },
+      { href: "/csv", label: "Import / Export", icon: FileSpreadsheet, testId: "nav-csv", show: r === "super_admin" || r === "salesman" },
       { href: "/users", label: "Users", icon: Shield, testId: "nav-users", show: r === "super_admin" },
     ];
     return base.filter((x) => x.show);
@@ -173,7 +179,7 @@ export default function AppShell(props: { children: React.ReactNode }) {
         minHeight: "100vh",
         position: "sticky",
         top: 0,
-        background: "linear-gradient(180deg, hsl(var(--sidebar)) 0%, hsl(222 44% 8%) 100%)",
+        background: "linear-gradient(180deg, hsl(var(--sidebar)) 0%, hsl(210 29% 8%) 100%)",
         borderRight: "1px solid hsl(var(--sidebar-border) / 1)",
       }}
     >
@@ -303,7 +309,7 @@ export default function AppShell(props: { children: React.ReactNode }) {
           zIndex: 1045,
           width: 300,
           transition: "transform 260ms cubic-bezier(.2,.8,.2,1)",
-          background: "linear-gradient(180deg, hsl(var(--sidebar)) 0%, hsl(222 44% 8%) 100%)",
+          background: "linear-gradient(180deg, hsl(var(--sidebar)) 0%, hsl(210 29% 8%) 100%)",
           borderRight: "1px solid hsl(var(--sidebar-border) / 1)",
           padding: 16,
         }}

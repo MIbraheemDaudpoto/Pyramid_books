@@ -10,6 +10,8 @@ import {
   type OrderWithItemsResponse,
   type OrdersListResponse,
   type PaymentsListResponse,
+  type StockReceiptsListResponse,
+  type ReportResponse,
 } from "./schema";
 
 export const errorSchemas = {
@@ -303,6 +305,82 @@ export const api = {
         400: errorSchemas.validation,
         401: errorSchemas.unauthorized,
         403: errorSchemas.forbidden,
+      },
+    },
+  },
+  stockReceipts: {
+    list: {
+      method: "GET" as const,
+      path: "/api/stock-receipts",
+      responses: {
+        200: z.custom<StockReceiptsListResponse>(),
+        401: errorSchemas.unauthorized,
+        403: errorSchemas.forbidden,
+      },
+    },
+
+    create: {
+      method: "POST" as const,
+      path: "/api/stock-receipts",
+      input: z.object({
+        publisher: z.string().min(1),
+        items: z.array(z.object({
+          bookId: z.coerce.number(),
+          qty: z.coerce.number().int().positive(),
+        })).min(1),
+        notes: z.string().optional(),
+      }).strict(),
+      responses: {
+        201: z.custom<StockReceiptsListResponse[number]>(),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+        403: errorSchemas.forbidden,
+      },
+    },
+  },
+
+  csv: {
+    exportBooks: {
+      method: "GET" as const,
+      path: "/api/csv/books",
+    },
+    importBooks: {
+      method: "POST" as const,
+      path: "/api/csv/books",
+    },
+    exportCustomers: {
+      method: "GET" as const,
+      path: "/api/csv/customers",
+    },
+    importCustomers: {
+      method: "POST" as const,
+      path: "/api/csv/customers",
+    },
+    exportStock: {
+      method: "GET" as const,
+      path: "/api/csv/stock-receipts",
+    },
+    templateBooks: {
+      method: "GET" as const,
+      path: "/api/csv/template/books",
+    },
+    templateCustomers: {
+      method: "GET" as const,
+      path: "/api/csv/template/customers",
+    },
+  },
+
+  reports: {
+    get: {
+      method: "GET" as const,
+      path: "/api/reports",
+      input: z.object({
+        from: z.string().optional(),
+        to: z.string().optional(),
+      }).optional(),
+      responses: {
+        200: z.custom<ReportResponse>(),
+        401: errorSchemas.unauthorized,
       },
     },
   },

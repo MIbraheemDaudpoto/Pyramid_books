@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, lte, sql } from "drizzle-orm";
 import {
   books,
   customers,
@@ -6,19 +6,25 @@ import {
   orderItems,
   orders,
   payments,
+  stockReceipts,
+  stockReceiptItems,
   users,
   type Book,
   type CreateBookRequest,
   type CreateCustomerRequest,
   type CreateOrderRequest,
   type CreatePaymentRequest,
+  type CreateStockReceiptRequest,
   type Customer,
   type CurrentUserResponse,
   type DashboardResponse,
   type OrderWithItemsResponse,
   type OrdersListResponse,
   type PaymentsListResponse,
+  type ReportResponse,
   type Role,
+  type StockReceiptWithItems,
+  type StockReceiptsListResponse,
   type UpdateBookRequest,
   type UpdateCustomerRequest,
   type UpdateOrderStatusRequest,
@@ -72,6 +78,10 @@ export interface IStorage {
 
   listPaymentsForUser(userId: string): Promise<PaymentsListResponse>;
   createPayment(userId: string, input: CreatePaymentRequest): Promise<number>;
+
+  listStockReceipts(): Promise<StockReceiptsListResponse>;
+  createStockReceipt(userId: string, input: CreateStockReceiptRequest): Promise<StockReceiptWithItems>;
+  getReports(from?: string, to?: string): Promise<ReportResponse>;
 
   seedIfEmpty(): Promise<void>;
 }
@@ -586,6 +596,249 @@ export class DatabaseStorage implements IStorage {
       .returning({ id: payments.id });
 
     return created.id;
+  }
+
+  async listStockReceipts(): Promise<StockReceiptsListResponse> {
+    const receipts = await db
+      .select({
+        id: stockReceipts.id,
+        receiptNo: stockReceipts.receiptNo,
+        receivedByUserId: stockReceipts.receivedByUserId,
+        publisher: stockReceipts.publisher,
+        notes: stockReceipts.notes,
+        receivedAt: stockReceipts.receivedAt,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+        userEmail: users.email,
+      })
+      .from(stockReceipts)
+      .innerJoin(users, eq(users.id, stockReceipts.receivedByUserId))
+      .orderBy(desc(stockReceipts.receivedAt));
+
+    const result: StockReceiptsListResponse = [];
+    for (const r of receipts) {
+      const items = await db
+        .select({
+          id: stockReceiptItems.id,
+          receiptId: stockReceiptItems.receiptId,
+          bookId: stockReceiptItems.bookId,
+          qty: stockReceiptItems.qty,
+          bookTitle: books.title,
+        })
+        .from(stockReceiptItems)
+        .innerJoin(books, eq(books.id, stockReceiptItems.bookId))
+        .where(eq(stockReceiptItems.receiptId, r.id));
+
+      result.push({
+        id: r.id,
+        receiptNo: r.receiptNo,
+        receivedByUserId: r.receivedByUserId,
+        publisher: r.publisher,
+        notes: r.notes,
+        receivedAt: r.receivedAt,
+        receivedByName: nameOf({
+          firstName: r.userFirstName,
+          lastName: r.userLastName,
+          email: r.userEmail,
+        }),
+        items,
+      });
+    }
+
+    return result;
+  }
+
+  async createStockReceipt(userId: string, input: CreateStockReceiptRequest): Promise<StockReceiptWithItems> {
+    const receiptNo = `SR-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1e6)).padStart(6, "0")}`;
+
+    const [created] = await db
+      .insert(stockReceipts)
+      .values({
+        receiptNo,
+        receivedByUserId: userId,
+        publisher: input.publisher,
+        notes: input.notes,
+      })
+      .returning();
+
+    const insertedItems: Array<{ id: number; receiptId: number; bookId: number; qty: number; bookTitle: string }> = [];
+
+    for (const item of input.items) {
+      const [inserted] = await db
+        .insert(stockReceiptItems)
+        .values({
+          receiptId: created.id,
+          bookId: item.bookId,
+          qty: item.qty,
+        })
+        .returning();
+
+      await db
+        .update(books)
+        .set({ stockQty: sql`${books.stockQty} + ${item.qty}` })
+        .where(eq(books.id, item.bookId));
+
+      const [book] = await db.select({ title: books.title }).from(books).where(eq(books.id, item.bookId));
+      insertedItems.push({ ...inserted, bookTitle: book?.title ?? "Unknown" });
+    }
+
+    const [u] = await db
+      .select({ firstName: users.firstName, lastName: users.lastName, email: users.email })
+      .from(users)
+      .where(eq(users.id, userId));
+
+    return {
+      ...created,
+      receivedByName: nameOf({ firstName: u?.firstName ?? null, lastName: u?.lastName ?? null, email: u?.email ?? null }),
+      items: insertedItems,
+    };
+  }
+
+  async getReports(from?: string, to?: string): Promise<ReportResponse> {
+    const dateFilters: any[] = [];
+    if (from) {
+      dateFilters.push(gte(orders.orderDate, new Date(from)));
+    }
+    if (to) {
+      dateFilters.push(lte(orders.orderDate, new Date(to)));
+    }
+
+    const orderWhere = dateFilters.length > 0 ? and(...dateFilters) : undefined;
+
+    const salesByMonthRows = await db
+      .select({
+        month: sql<string>`to_char(${orders.orderDate}, 'YYYY-MM')`,
+        total: sql<number>`coalesce(sum(${orders.total}), 0)`,
+        count: sql<number>`count(*)`,
+      })
+      .from(orders)
+      .where(orderWhere)
+      .groupBy(sql`to_char(${orders.orderDate}, 'YYYY-MM')`)
+      .orderBy(sql`to_char(${orders.orderDate}, 'YYYY-MM')`);
+
+    const salesByMonth = salesByMonthRows.map((r) => ({
+      month: r.month,
+      total: Number(r.total),
+      count: Number(r.count),
+    }));
+
+    let topBooksQuery = db
+      .select({
+        bookId: orderItems.bookId,
+        title: books.title,
+        totalQty: sql<number>`coalesce(sum(${orderItems.qty}), 0)`,
+        totalRevenue: sql<number>`coalesce(sum(${orderItems.lineTotal}), 0)`,
+      })
+      .from(orderItems)
+      .innerJoin(books, eq(books.id, orderItems.bookId))
+      .innerJoin(orders, eq(orders.id, orderItems.orderId));
+
+    if (orderWhere) {
+      topBooksQuery = topBooksQuery.where(orderWhere) as any;
+    }
+
+    const topBooksRows = await (topBooksQuery as any)
+      .groupBy(orderItems.bookId, books.title)
+      .orderBy(sql`sum(${orderItems.lineTotal}) desc`)
+      .limit(10);
+
+    const topBooks = topBooksRows.map((r: any) => ({
+      bookId: r.bookId,
+      title: r.title,
+      totalQty: Number(r.totalQty),
+      totalRevenue: Number(r.totalRevenue),
+    }));
+
+    let topCustomersQuery = db
+      .select({
+        customerId: orders.customerId,
+        name: customers.name,
+        totalSpent: sql<number>`coalesce(sum(${orders.total}), 0)`,
+        orderCount: sql<number>`count(*)`,
+      })
+      .from(orders)
+      .innerJoin(customers, eq(customers.id, orders.customerId));
+
+    if (orderWhere) {
+      topCustomersQuery = topCustomersQuery.where(orderWhere) as any;
+    }
+
+    const topCustomersRows = await (topCustomersQuery as any)
+      .groupBy(orders.customerId, customers.name)
+      .orderBy(sql`sum(${orders.total}) desc`)
+      .limit(10);
+
+    const topCustomers = topCustomersRows.map((r: any) => ({
+      customerId: r.customerId,
+      name: r.name,
+      totalSpent: Number(r.totalSpent),
+      orderCount: Number(r.orderCount),
+    }));
+
+    const allCustomers = await db.select({ id: customers.id, name: customers.name }).from(customers);
+
+    const outstandingBalances: ReportResponse["outstandingBalances"] = [];
+    for (const c of allCustomers) {
+      const [{ total: totalOrders }] = await db
+        .select({ total: sql<number>`coalesce(sum(${orders.total}), 0)` })
+        .from(orders)
+        .where(eq(orders.customerId, c.id));
+
+      const [{ total: totalPaid }] = await db
+        .select({ total: sql<number>`coalesce(sum(${payments.amount}), 0)` })
+        .from(payments)
+        .where(eq(payments.customerId, c.id));
+
+      const tOrders = Number(totalOrders);
+      const tPaid = Number(totalPaid);
+      const balance = tOrders - tPaid;
+      if (balance !== 0) {
+        outstandingBalances.push({
+          customerId: c.id,
+          name: c.name,
+          totalOrders: tOrders,
+          totalPaid: tPaid,
+          balance,
+        });
+      }
+    }
+
+    let salesmanQuery = db
+      .select({
+        userId: orders.createdByUserId,
+        orderCount: sql<number>`count(*)`,
+        totalSales: sql<number>`coalesce(sum(${orders.total}), 0)`,
+      })
+      .from(orders);
+
+    if (orderWhere) {
+      salesmanQuery = salesmanQuery.where(orderWhere) as any;
+    }
+
+    const salesmanRows = await (salesmanQuery as any)
+      .groupBy(orders.createdByUserId);
+
+    const salesmanPerformance: ReportResponse["salesmanPerformance"] = [];
+    for (const row of salesmanRows as any[]) {
+      const [u] = await db
+        .select({ firstName: users.firstName, lastName: users.lastName, email: users.email })
+        .from(users)
+        .where(eq(users.id, row.userId));
+      salesmanPerformance.push({
+        userId: row.userId,
+        name: u ? nameOf(u) : "Unknown",
+        orderCount: Number(row.orderCount),
+        totalSales: Number(row.totalSales),
+      });
+    }
+
+    return {
+      salesByMonth,
+      topBooks,
+      topCustomers,
+      outstandingBalances,
+      salesmanPerformance,
+    };
   }
 
   async getDashboard(userId: string): Promise<DashboardResponse> {
