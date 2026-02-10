@@ -6,7 +6,6 @@ import {
   jsonb,
   numeric,
   pgTable,
-  primaryKey,
   serial,
   text,
   timestamp,
@@ -16,7 +15,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// ===== Replit Auth tables (mandatory) =====
+// ===== Sessions table =====
 export const sessions = pgTable(
   "sessions",
   {
@@ -27,6 +26,7 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
+// ===== Users table =====
 export const users = pgTable(
   "users",
   {
@@ -34,24 +34,22 @@ export const users = pgTable(
     email: varchar("email").unique(),
     firstName: varchar("first_name"),
     lastName: varchar("last_name"),
+    phone: varchar("phone", { length: 32 }),
+    passwordHash: text("password_hash"),
     profileImageUrl: varchar("profile_image_url"),
+    profileType: varchar("profile_type", { length: 32 }).notNull().default("individual"),
+    companyName: text("company_name"),
+    taxNumber: varchar("tax_number", { length: 64 }),
+    address: text("address"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
-
-    // Pyramid Books app fields
-    role: varchar("role", { length: 32 }).notNull().default("salesman"),
+    role: varchar("role", { length: 32 }).notNull().default("customer"),
     isActive: boolean("is_active").notNull().default(true),
   },
   (table) => [uniqueIndex("UQ_users_email").on(table.email)],
 );
 
-export const roles = [
-  "super_admin",
-  "salesman",
-  "fixed_customer",
-  "local_customer",
-] as const;
-
+export const roles = ["admin", "salesman", "customer"] as const;
 export type Role = (typeof roles)[number];
 
 // ===== Core domain tables =====
@@ -72,12 +70,14 @@ export const customers = pgTable(
       () => users.id,
       { onDelete: "set null" },
     ),
+    linkedUserId: varchar("linked_user_id").references(() => users.id, { onDelete: "set null" }),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
     index("IDX_customers_type").on(table.customerType),
     index("IDX_customers_salesman").on(table.assignedSalesmanUserId),
+    index("IDX_customers_linked_user").on(table.linkedUserId),
   ],
 );
 
@@ -191,24 +191,7 @@ export const payments = pgTable(
   ],
 );
 
-export const fixedCustomerUsers = pgTable(
-  "fixed_customer_users",
-  {
-    userId: varchar("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    customerId: integer("customer_id")
-      .notNull()
-      .references(() => customers.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-  },
-  (table) => [
-    primaryKey({ columns: [table.userId, table.customerId] }),
-    index("IDX_fixed_customer_users_customer").on(table.customerId),
-  ],
-);
-
-// ===== Stock Receipts (salesman records books from publishers) =====
+// ===== Stock Receipts =====
 export const stockReceipts = pgTable(
   "stock_receipts",
   {
@@ -287,6 +270,46 @@ export const discountRules = pgTable(
   },
 );
 
+// ===== School Lists =====
+export const schoolLists = pgTable(
+  "school_lists",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    schoolName: text("school_name"),
+    description: text("description"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("IDX_school_lists_user").on(table.userId),
+  ],
+);
+
+export const schoolListItems = pgTable(
+  "school_list_items",
+  {
+    id: serial("id").primaryKey(),
+    listId: integer("list_id")
+      .notNull()
+      .references(() => schoolLists.id, { onDelete: "cascade" }),
+    bookId: integer("book_id")
+      .notNull()
+      .references(() => books.id, { onDelete: "restrict" }),
+    qty: integer("qty").notNull().default(1),
+    notes: text("notes"),
+    addedAt: timestamp("added_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("IDX_school_list_items_list").on(table.listId),
+    index("IDX_school_list_items_book").on(table.bookId),
+  ],
+);
+
 // ===== Insert schemas =====
 export const insertCustomerSchema = createInsertSchema(customers).omit({
   id: true,
@@ -336,12 +359,13 @@ export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 
-export type FixedCustomerUser = typeof fixedCustomerUsers.$inferSelect;
-
 export type CartItem = typeof shoppingCart.$inferSelect;
 export type DiscountRule = typeof discountRules.$inferSelect;
 
-// ===== Explicit API request/response types =====
+export type SchoolList = typeof schoolLists.$inferSelect;
+export type SchoolListItem = typeof schoolListItems.$inferSelect;
+
+// ===== API request/response types =====
 export type CurrentUserResponse =
   | (Pick<
       User,
@@ -349,7 +373,12 @@ export type CurrentUserResponse =
       | "email"
       | "firstName"
       | "lastName"
+      | "phone"
       | "profileImageUrl"
+      | "profileType"
+      | "companyName"
+      | "taxNumber"
+      | "address"
       | "role"
       | "isActive"
     > & { customerId?: number | null })
@@ -465,3 +494,11 @@ export type CartResponse = CartItemWithBook[];
 export interface DiscountRulesListResponse {
   rules: DiscountRule[];
 }
+
+export interface SchoolListWithItems extends SchoolList {
+  items: Array<SchoolListItem & { book: Pick<Book, "id" | "title" | "isbn" | "author" | "unitPrice"> }>;
+  totalBooks: number;
+  totalValue: number;
+}
+
+export type SchoolListsResponse = SchoolListWithItems[];

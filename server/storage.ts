@@ -3,10 +3,11 @@ import {
   books,
   customers,
   discountRules,
-  fixedCustomerUsers,
   orderItems,
   orders,
   payments,
+  schoolLists,
+  schoolListItems,
   shoppingCart,
   stockReceipts,
   stockReceiptItems,
@@ -55,6 +56,7 @@ export interface IStorage {
     updates: { role?: Role; isActive?: boolean; customerId?: number | null },
   ): Promise<{ id: string; role: Role; isActive: boolean; customerId?: number | null }>;
 
+  findUserByEmail(email: string): Promise<User | undefined>;
   getDashboard(userId: string): Promise<DashboardResponse>;
 
   listCustomersForUser(userId: string): Promise<Customer[]>;
@@ -99,6 +101,27 @@ export interface IStorage {
   deleteDiscountRule(id: number): Promise<void>;
   findBestDiscount(subtotal: number): Promise<number>;
 
+  listSchoolLists(userId: string): Promise<any[]>;
+  createSchoolList(userId: string, input: { name: string; schoolName?: string | null; description?: string | null }): Promise<any>;
+  updateSchoolList(userId: string, listId: number, input: { name?: string; schoolName?: string | null; description?: string | null }): Promise<any>;
+  deleteSchoolList(userId: string, listId: number): Promise<void>;
+  addSchoolListItem(userId: string, listId: number, input: { bookId: number; qty: number; notes?: string | null }): Promise<any>;
+  updateSchoolListItem(userId: string, listId: number, itemId: number, input: { qty?: number; notes?: string | null }): Promise<any>;
+  removeSchoolListItem(userId: string, listId: number, itemId: number): Promise<any>;
+  addSchoolListToCart(userId: string, listId: number): Promise<void>;
+
+  updateProfile(userId: string, data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string | null;
+    profileType?: string;
+    companyName?: string | null;
+    taxNumber?: string | null;
+    address?: string | null;
+  }): Promise<CurrentUserResponse>;
+  getUserWithPassword(userId: string): Promise<{ passwordHash: string | null } | null>;
+  updatePassword(userId: string, hash: string): Promise<void>;
+
   seedIfEmpty(): Promise<void>;
 }
 
@@ -114,6 +137,11 @@ function nameOf(u: { firstName: string | null; lastName: string | null; email: s
 }
 
 export class DatabaseStorage implements IStorage {
+  async findUserByEmail(email: string): Promise<User | undefined> {
+    const [u] = await db.select().from(users).where(eq(users.email, email));
+    return u;
+  }
+
   async getCurrentUser(userId: string): Promise<CurrentUserResponse> {
     const [u] = await db
       .select({
@@ -121,7 +149,12 @@ export class DatabaseStorage implements IStorage {
         email: users.email,
         firstName: users.firstName,
         lastName: users.lastName,
+        phone: users.phone,
         profileImageUrl: users.profileImageUrl,
+        profileType: users.profileType,
+        companyName: users.companyName,
+        taxNumber: users.taxNumber,
+        address: users.address,
         role: users.role,
         isActive: users.isActive,
       })
@@ -130,15 +163,16 @@ export class DatabaseStorage implements IStorage {
 
     if (!u) return null;
 
-    const [fixed] = await db
-      .select({ customerId: fixedCustomerUsers.customerId })
-      .from(fixedCustomerUsers)
-      .where(eq(fixedCustomerUsers.userId, userId));
+    const [linked] = await db
+      .select({ id: customers.id })
+      .from(customers)
+      .where(eq(customers.linkedUserId, userId));
 
     return {
       ...u,
-      customerId: fixed?.customerId ?? null,
-    };
+      role: u.role as Role,
+      customerId: linked?.id ?? null,
+    } as CurrentUserResponse;
   }
 
   async listUsers() {
@@ -155,14 +189,15 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .orderBy(desc(users.createdAt));
 
-    const fixed = await db
-      .select({ userId: fixedCustomerUsers.userId, customerId: fixedCustomerUsers.customerId })
-      .from(fixedCustomerUsers);
+    const linkedCustomers = await db
+      .select({ linkedUserId: customers.linkedUserId, id: customers.id })
+      .from(customers)
+      .where(sql`${customers.linkedUserId} IS NOT NULL`);
 
-    const fixedMap = new Map<string, number>();
-    fixed.forEach((f) => fixedMap.set(f.userId, f.customerId));
+    const linkedMap = new Map<string, number>();
+    linkedCustomers.forEach((c) => { if (c.linkedUserId) linkedMap.set(c.linkedUserId, c.id); });
 
-    return rows.map((r) => ({ ...r, customerId: fixedMap.get(r.id) ?? null }));
+    return rows.map((r) => ({ ...r, role: r.role as Role, customerId: linkedMap.get(r.id) ?? null }));
   }
 
   async updateUser(id: string, updates: { role?: Role; isActive?: boolean; customerId?: number | null }) {
@@ -185,32 +220,32 @@ export class DatabaseStorage implements IStorage {
       .returning({ id: users.id, role: users.role, isActive: users.isActive });
 
     if (updates.customerId !== undefined) {
-      if (updates.customerId === null) {
-        await db.delete(fixedCustomerUsers).where(eq(fixedCustomerUsers.userId, id));
-      } else {
+      await db
+        .update(customers)
+        .set({ linkedUserId: null })
+        .where(eq(customers.linkedUserId, id));
+
+      if (updates.customerId !== null) {
         await db
-          .insert(fixedCustomerUsers)
-          .values({ userId: id, customerId: updates.customerId })
-          .onConflictDoUpdate({
-            target: [fixedCustomerUsers.userId, fixedCustomerUsers.customerId],
-            set: { customerId: updates.customerId },
-          });
+          .update(customers)
+          .set({ linkedUserId: id })
+          .where(eq(customers.id, updates.customerId));
       }
     }
 
-    const [fixed] = await db
-      .select({ customerId: fixedCustomerUsers.customerId })
-      .from(fixedCustomerUsers)
-      .where(eq(fixedCustomerUsers.userId, id));
+    const [linked] = await db
+      .select({ id: customers.id })
+      .from(customers)
+      .where(eq(customers.linkedUserId, id));
 
-    return { ...updated, customerId: fixed?.customerId ?? null };
+    return { ...updated, role: updated.role as Role, customerId: linked?.id ?? null };
   }
 
   async listCustomersForUser(userId: string): Promise<Customer[]> {
     const me = await this.getCurrentUser(userId);
     if (!me) return [];
 
-    if (me.role === "super_admin") {
+    if (me.role === "admin") {
       return await db.select().from(customers).orderBy(desc(customers.createdAt));
     }
 
@@ -222,7 +257,7 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(customers.createdAt));
     }
 
-    if (me.role === "fixed_customer") {
+    if (me.role === "customer") {
       if (!me.customerId) return [];
       const [c] = await db.select().from(customers).where(eq(customers.id, me.customerId));
       return c ? [c] : [];
@@ -300,14 +335,16 @@ export class DatabaseStorage implements IStorage {
     if (!me) return [] as any;
 
     let whereClause;
-    if (me.role === "super_admin") {
+    if (me.role === "admin") {
       whereClause = undefined;
     } else if (me.role === "salesman") {
       whereClause = eq(orders.createdByUserId, userId);
-    } else if (me.role === "fixed_customer") {
-      whereClause = me.customerId ? eq(orders.customerId, me.customerId) : sql`false`;
-    } else if (me.role === "local_customer") {
-      whereClause = eq(orders.createdByUserId, userId);
+    } else if (me.role === "customer") {
+      if (me.customerId) {
+        whereClause = sql`(${orders.customerId} = ${me.customerId} OR ${orders.createdByUserId} = ${userId})`;
+      } else {
+        whereClause = eq(orders.createdByUserId, userId);
+      }
     } else {
       whereClause = sql`false`;
     }
@@ -342,9 +379,9 @@ export class DatabaseStorage implements IStorage {
     if (!o) return undefined;
 
     const canView =
-      me.role === "super_admin" ||
+      me.role === "admin" ||
       (me.role === "salesman" && o.createdByUserId === userId) ||
-      (me.role === "fixed_customer" && me.customerId && o.customerId === me.customerId);
+      (me.role === "customer" && (o.createdByUserId === userId || (me.customerId && o.customerId === me.customerId)));
 
     if (!canView) {
       throw Object.assign(new Error("Forbidden"), { status: 403 });
@@ -414,7 +451,7 @@ export class DatabaseStorage implements IStorage {
       throw Object.assign(new Error("Unauthorized"), { status: 401 });
     }
 
-    const canCreate = me.role === "super_admin" || me.role === "salesman";
+    const canCreate = me.role === "admin" || me.role === "salesman";
     if (!canCreate) {
       throw Object.assign(new Error("Forbidden"), { status: 403 });
     }
@@ -519,7 +556,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     const canUpdate =
-      me.role === "super_admin" || (me.role === "salesman" && o.createdByUserId === userId);
+      me.role === "admin" || (me.role === "salesman" && o.createdByUserId === userId);
 
     if (!canUpdate) {
       throw Object.assign(new Error("Forbidden"), { status: 403 });
@@ -540,7 +577,7 @@ export class DatabaseStorage implements IStorage {
 
     let customerFilterIds: number[] | null = null;
 
-    if (me.role === "fixed_customer") {
+    if (me.role === "customer") {
       customerFilterIds = me.customerId ? [me.customerId] : [];
     }
 
@@ -594,7 +631,7 @@ export class DatabaseStorage implements IStorage {
       throw Object.assign(new Error("Unauthorized"), { status: 401 });
     }
 
-    const canCreate = me.role === "super_admin" || me.role === "salesman";
+    const canCreate = me.role === "admin" || me.role === "salesman";
     if (!canCreate) {
       throw Object.assign(new Error("Forbidden"), { status: 403 });
     }
@@ -1022,21 +1059,26 @@ export class DatabaseStorage implements IStorage {
 
     let customerId: number;
 
-    if (me.role === "fixed_customer") {
-      if (!me.customerId) {
-        throw Object.assign(new Error("No linked customer account"), { status: 400 });
+    if (me.role === "customer") {
+      if (me.customerId) {
+        customerId = me.customerId;
+      } else {
+        const [autoCreated] = await db
+          .insert(customers)
+          .values({
+            name: [me.firstName ?? "", me.lastName ?? ""].join(" ").trim() || me.email || "Customer",
+            customerType: "customer",
+            phone: null,
+            email: me.email,
+            address: null,
+            creditLimit: "0",
+            notes: "Auto-created from cart checkout",
+            linkedUserId: userId,
+            isActive: true,
+          })
+          .returning();
+        customerId = autoCreated.id;
       }
-      customerId = me.customerId;
-    } else if (me.role === "local_customer") {
-      const [walkIn] = await db
-        .select({ id: customers.id })
-        .from(customers)
-        .where(eq(customers.customerType, "local_customer"))
-        .limit(1);
-      if (!walkIn) {
-        throw Object.assign(new Error("No local customer record found"), { status: 400 });
-      }
-      customerId = walkIn.id;
     } else {
       throw Object.assign(new Error("Only customers can checkout cart"), { status: 403 });
     }
@@ -1065,7 +1107,7 @@ export class DatabaseStorage implements IStorage {
     const discountAmount = subtotal * discountPct / 100;
     const total = subtotal - discountAmount;
 
-    if (me.role === "fixed_customer") {
+    if (me.role === "customer" && me.customerId) {
       const [cust] = await db
         .select({ creditLimit: customers.creditLimit })
         .from(customers)
@@ -1195,9 +1237,187 @@ export class DatabaseStorage implements IStorage {
     return bestPct;
   }
 
+  async updateProfile(userId: string, data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string | null;
+    profileType?: string;
+    companyName?: string | null;
+    taxNumber?: string | null;
+    address?: string | null;
+  }): Promise<CurrentUserResponse> {
+    const setObj: any = { updatedAt: new Date() };
+    if (data.firstName !== undefined) setObj.firstName = data.firstName;
+    if (data.lastName !== undefined) setObj.lastName = data.lastName;
+    if (data.phone !== undefined) setObj.phone = data.phone;
+    if (data.profileType !== undefined) setObj.profileType = data.profileType;
+    if (data.companyName !== undefined) setObj.companyName = data.companyName;
+    if (data.taxNumber !== undefined) setObj.taxNumber = data.taxNumber;
+    if (data.address !== undefined) setObj.address = data.address;
+
+    await db.update(users).set(setObj).where(eq(users.id, userId));
+    return this.getCurrentUser(userId);
+  }
+
+  async getUserWithPassword(userId: string): Promise<{ passwordHash: string | null } | null> {
+    const [u] = await db
+      .select({ passwordHash: users.passwordHash })
+      .from(users)
+      .where(eq(users.id, userId));
+    return u ?? null;
+  }
+
+  async updatePassword(userId: string, hash: string): Promise<void> {
+    await db.update(users).set({ passwordHash: hash, updatedAt: new Date() }).where(eq(users.id, userId));
+  }
+
+  private async getSchoolListWithItems(listId: number): Promise<any> {
+    const [list] = await db.select().from(schoolLists).where(eq(schoolLists.id, listId));
+    if (!list) throw Object.assign(new Error("School list not found"), { status: 404 });
+    const items = await db
+      .select({
+        id: schoolListItems.id,
+        listId: schoolListItems.listId,
+        bookId: schoolListItems.bookId,
+        qty: schoolListItems.qty,
+        notes: schoolListItems.notes,
+        addedAt: schoolListItems.addedAt,
+        book: {
+          id: books.id,
+          title: books.title,
+          isbn: books.isbn,
+          author: books.author,
+          unitPrice: books.unitPrice,
+        },
+      })
+      .from(schoolListItems)
+      .innerJoin(books, eq(schoolListItems.bookId, books.id))
+      .where(eq(schoolListItems.listId, listId))
+      .orderBy(schoolListItems.addedAt);
+    return { ...list, items };
+  }
+
+  async listSchoolLists(userId: string): Promise<any[]> {
+    const lists = await db
+      .select()
+      .from(schoolLists)
+      .where(eq(schoolLists.userId, userId))
+      .orderBy(desc(schoolLists.updatedAt));
+    const result = [];
+    for (const list of lists) {
+      const items = await db
+        .select({
+          id: schoolListItems.id,
+          listId: schoolListItems.listId,
+          bookId: schoolListItems.bookId,
+          qty: schoolListItems.qty,
+          notes: schoolListItems.notes,
+          addedAt: schoolListItems.addedAt,
+          book: {
+            id: books.id,
+            title: books.title,
+            isbn: books.isbn,
+            author: books.author,
+            unitPrice: books.unitPrice,
+          },
+        })
+        .from(schoolListItems)
+        .innerJoin(books, eq(schoolListItems.bookId, books.id))
+        .where(eq(schoolListItems.listId, list.id))
+        .orderBy(schoolListItems.addedAt);
+      result.push({ ...list, items });
+    }
+    return result;
+  }
+
+  async createSchoolList(userId: string, input: { name: string; schoolName?: string | null; description?: string | null }): Promise<any> {
+    const [list] = await db.insert(schoolLists).values({
+      userId,
+      name: input.name,
+      schoolName: input.schoolName ?? null,
+      description: input.description ?? null,
+    }).returning();
+    return { ...list, items: [] };
+  }
+
+  async updateSchoolList(userId: string, listId: number, input: { name?: string; schoolName?: string | null; description?: string | null }): Promise<any> {
+    const [existing] = await db.select().from(schoolLists).where(and(eq(schoolLists.id, listId), eq(schoolLists.userId, userId)));
+    if (!existing) throw Object.assign(new Error("School list not found"), { status: 404 });
+    const setObj: any = { updatedAt: new Date() };
+    if (input.name !== undefined) setObj.name = input.name;
+    if (input.schoolName !== undefined) setObj.schoolName = input.schoolName;
+    if (input.description !== undefined) setObj.description = input.description;
+    await db.update(schoolLists).set(setObj).where(eq(schoolLists.id, listId));
+    return this.getSchoolListWithItems(listId);
+  }
+
+  async deleteSchoolList(userId: string, listId: number): Promise<void> {
+    const [existing] = await db.select().from(schoolLists).where(and(eq(schoolLists.id, listId), eq(schoolLists.userId, userId)));
+    if (!existing) throw Object.assign(new Error("School list not found"), { status: 404 });
+    await db.delete(schoolLists).where(eq(schoolLists.id, listId));
+  }
+
+  async addSchoolListItem(userId: string, listId: number, input: { bookId: number; qty: number; notes?: string | null }): Promise<any> {
+    const [existing] = await db.select().from(schoolLists).where(and(eq(schoolLists.id, listId), eq(schoolLists.userId, userId)));
+    if (!existing) throw Object.assign(new Error("School list not found"), { status: 404 });
+    const [existingItem] = await db.select().from(schoolListItems).where(and(eq(schoolListItems.listId, listId), eq(schoolListItems.bookId, input.bookId)));
+    if (existingItem) {
+      await db.update(schoolListItems).set({ qty: existingItem.qty + input.qty }).where(eq(schoolListItems.id, existingItem.id));
+    } else {
+      await db.insert(schoolListItems).values({
+        listId,
+        bookId: input.bookId,
+        qty: input.qty,
+        notes: input.notes ?? null,
+      });
+    }
+    await db.update(schoolLists).set({ updatedAt: new Date() }).where(eq(schoolLists.id, listId));
+    return this.getSchoolListWithItems(listId);
+  }
+
+  async updateSchoolListItem(userId: string, listId: number, itemId: number, input: { qty?: number; notes?: string | null }): Promise<any> {
+    const [existing] = await db.select().from(schoolLists).where(and(eq(schoolLists.id, listId), eq(schoolLists.userId, userId)));
+    if (!existing) throw Object.assign(new Error("School list not found"), { status: 404 });
+    const setObj: any = {};
+    if (input.qty !== undefined) setObj.qty = input.qty;
+    if (input.notes !== undefined) setObj.notes = input.notes;
+    await db.update(schoolListItems).set(setObj).where(and(eq(schoolListItems.id, itemId), eq(schoolListItems.listId, listId)));
+    await db.update(schoolLists).set({ updatedAt: new Date() }).where(eq(schoolLists.id, listId));
+    return this.getSchoolListWithItems(listId);
+  }
+
+  async removeSchoolListItem(userId: string, listId: number, itemId: number): Promise<any> {
+    const [existing] = await db.select().from(schoolLists).where(and(eq(schoolLists.id, listId), eq(schoolLists.userId, userId)));
+    if (!existing) throw Object.assign(new Error("School list not found"), { status: 404 });
+    await db.delete(schoolListItems).where(and(eq(schoolListItems.id, itemId), eq(schoolListItems.listId, listId)));
+    await db.update(schoolLists).set({ updatedAt: new Date() }).where(eq(schoolLists.id, listId));
+    return this.getSchoolListWithItems(listId);
+  }
+
+  async addSchoolListToCart(userId: string, listId: number): Promise<void> {
+    const list = await this.getSchoolListWithItems(listId);
+    if (list.userId !== userId) throw Object.assign(new Error("School list not found"), { status: 404 });
+    if (!list.items.length) throw Object.assign(new Error("List has no items"), { status: 400 });
+    for (const item of list.items) {
+      const [existingCart] = await db.select().from(shoppingCart).where(and(eq(shoppingCart.userId, userId), eq(shoppingCart.bookId, item.bookId)));
+      if (existingCart) {
+        await db.update(shoppingCart).set({ qty: existingCart.qty + item.qty }).where(eq(shoppingCart.id, existingCart.id));
+      } else {
+        await db.insert(shoppingCart).values({
+          userId,
+          bookId: item.bookId,
+          qty: item.qty,
+        });
+      }
+    }
+  }
+
   async seedIfEmpty(): Promise<void> {
     const [{ count: booksCount }] = await db.select({ count: sql<number>`count(*)` }).from(books);
     if (booksCount > 0) return;
+
+    const bcrypt = await import("bcryptjs");
+    const adminHash = await bcrypt.hash("admin123", 10);
 
     const [admin] = await db
       .insert(users)
@@ -1206,8 +1426,9 @@ export class DatabaseStorage implements IStorage {
         email: "admin@pyramidbooks.example",
         firstName: "Pyramid",
         lastName: "Admin",
+        passwordHash: adminHash,
         profileImageUrl: null,
-        role: "super_admin",
+        role: "admin",
         isActive: true,
       })
       .onConflictDoNothing()
@@ -1228,24 +1449,26 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     const salesmanId = (sales?.id ?? "00000000-0000-0000-0000-000000000002") as string;
+    const adminId = (admin?.id ?? "00000000-0000-0000-0000-000000000001") as string;
 
     const createdCustomers = await db
       .insert(customers)
       .values([
         {
           name: "Cedar Town Books", 
-          customerType: "fixed_customer",
+          customerType: "customer",
           phone: "+1 555 0134",
           email: "orders@cedartownbooks.example",
           address: "14 Cedar Avenue, Springfield",
           creditLimit: "5000",
           notes: "Preferred delivery: Tue/Thu",
           assignedSalesmanUserId: salesmanId,
+          linkedUserId: adminId,
           isActive: true,
         },
         {
           name: "Riverside Community Library",
-          customerType: "fixed_customer",
+          customerType: "customer",
           phone: "+1 555 0199",
           email: "acquisitions@riversidelibrary.example",
           address: "200 Riverside Rd, Springfield",
@@ -1256,7 +1479,7 @@ export class DatabaseStorage implements IStorage {
         },
         {
           name: "Walk-in (Local)",
-          customerType: "local_customer",
+          customerType: "customer",
           phone: null,
           email: null,
           address: "Retail Counter",
@@ -1331,14 +1554,6 @@ export class DatabaseStorage implements IStorage {
       },
     ]);
 
-    const fixedCustomerId = createdCustomers.find((c) => c.customerType === "fixed_customer")?.id;
-    if (fixedCustomerId) {
-      await db
-        .insert(fixedCustomerUsers)
-        .values({ userId: salesmanId, customerId: fixedCustomerId })
-        .onConflictDoNothing();
-    }
-
     const [firstOrder] = await db
       .insert(orders)
       .values({
@@ -1387,12 +1602,6 @@ export class DatabaseStorage implements IStorage {
         .returning();
     }
 
-    if (admin?.id) {
-      await db
-        .insert(fixedCustomerUsers)
-        .values({ userId: admin.id, customerId: createdCustomers[0].id })
-        .onConflictDoNothing();
-    }
   }
 }
 

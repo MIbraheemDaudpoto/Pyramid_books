@@ -18,8 +18,8 @@ export default function CsvImportExportPage() {
     if (/^401:/.test(msg)) redirectToLogin(toast);
   }, [error, toast]);
 
-  const isAdmin = me?.role === "super_admin";
-  const canExportStock = me?.role === "super_admin" || me?.role === "salesman";
+  const isAdmin = me?.role === "admin";
+  const canExportStock = me?.role === "admin" || me?.role === "salesman";
 
   const booksFileRef = useRef<HTMLInputElement>(null);
   const customersFileRef = useRef<HTMLInputElement>(null);

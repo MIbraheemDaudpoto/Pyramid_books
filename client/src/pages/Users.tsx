@@ -7,18 +7,45 @@ import { useUpdateUser, useUsers } from "@/hooks/use-users";
 import { useCustomers } from "@/hooks/use-customers";
 import { useToast } from "@/hooks/use-toast";
 import { redirectToLogin } from "@/lib/auth-utils";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Role } from "@shared/schema";
-import { Shield, Users as UsersIcon, BadgeCheck, Ban } from "lucide-react";
+import { Shield, Users as UsersIcon, BadgeCheck, Ban, Plus, UserPlus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 
 export default function UsersPage() {
   const { toast } = useToast();
   const { data: me } = useMe();
-  const isAdmin = me?.role === "super_admin";
+  const isAdmin = me?.role === "admin";
 
   const usersQuery = useUsers();
   const customersQuery = useCustomers();
   const update = useUpdateUser();
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [createEmail, setCreateEmail] = useState("");
+  const [createFirstName, setCreateFirstName] = useState("");
+  const [createLastName, setCreateLastName] = useState("");
+  const [createPassword, setCreatePassword] = useState("");
+  const [createRole, setCreateRole] = useState<string>("salesman");
+
+  const createUser = useMutation({
+    mutationFn: async (data: { email: string; firstName: string; lastName: string; password: string; role: string }) => {
+      const res = await apiRequest("POST", "/api/admin/users", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setShowCreate(false);
+      setCreateEmail("");
+      setCreateFirstName("");
+      setCreateLastName("");
+      setCreatePassword("");
+      setCreateRole("salesman");
+      toast({ title: "User created", description: "New user account has been created." });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message || "Failed to create user", variant: "destructive" }),
+  });
 
   useEffect(() => {
     const msg = (usersQuery.error as Error | undefined)?.message || "";
@@ -69,21 +96,24 @@ export default function UsersPage() {
 
       <SectionHeader
         title="Users"
-        subtitle="Admin-only controls: assign roles and (for fixed customers) link a user to a customerId."
+        subtitle="Manage user accounts, assign roles, and link customers."
         badge={
           <span className="badge rounded-pill text-bg-light border">
             <Shield className="w-3 h-3 me-1" />
-            super_admin only
+            admin only
           </span>
         }
         right={
-          <button
-            className="btn btn-outline-primary"
-            onClick={() => window.location.reload()}
-            data-testid="users-refresh"
-          >
-            Refresh
-          </button>
+          <div className="d-flex gap-2 flex-wrap">
+            <button
+              className="btn btn-primary d-flex align-items-center gap-2"
+              onClick={() => setShowCreate(!showCreate)}
+              data-testid="button-create-user"
+            >
+              <UserPlus style={{ width: 16, height: 16 }} />
+              Create User
+            </button>
+          </div>
         }
       />
 
@@ -93,6 +123,53 @@ export default function UsersPage() {
         </div>
       ) : (
         <>
+          {showCreate && (
+            <GlassCard className="mb-4 pb-enter">
+              <h5 className="mb-3 d-flex align-items-center gap-2">
+                <UserPlus style={{ width: 20, height: 20 }} className="text-primary" />
+                Create New User
+              </h5>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                createUser.mutate({ email: createEmail, firstName: createFirstName, lastName: createLastName, password: createPassword, role: createRole });
+              }}>
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <label className="form-label fw-semibold">First Name *</label>
+                    <input type="text" className="form-control" value={createFirstName} onChange={(e) => setCreateFirstName(e.target.value)} required data-testid="input-create-first-name" />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label fw-semibold">Last Name *</label>
+                    <input type="text" className="form-control" value={createLastName} onChange={(e) => setCreateLastName(e.target.value)} required data-testid="input-create-last-name" />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label fw-semibold">Email *</label>
+                    <input type="email" className="form-control" value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} required data-testid="input-create-email" />
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label fw-semibold">Password *</label>
+                    <input type="password" className="form-control" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} required minLength={6} data-testid="input-create-password" />
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label fw-semibold">Role *</label>
+                    <select className="form-select" value={createRole} onChange={(e) => setCreateRole(e.target.value)} data-testid="select-create-role">
+                      <option value="salesman">Salesman</option>
+                      <option value="customer">Customer</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="d-flex gap-2 mt-3">
+                  <button type="submit" className="btn btn-primary d-flex align-items-center gap-2" disabled={createUser.isPending} data-testid="button-submit-create-user">
+                    {createUser.isPending ? <span className="spinner-border spinner-border-sm" /> : <Plus style={{ width: 16, height: 16 }} />}
+                    Create
+                  </button>
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowCreate(false)}>Cancel</button>
+                </div>
+              </form>
+            </GlassCard>
+          )}
+
           <GlassCard>
             <label className="form-label small text-muted">Search</label>
             <input
@@ -125,7 +202,7 @@ export default function UsersPage() {
                         <th style={{ minWidth: 260 }}>User</th>
                         <th>Role</th>
                         <th className="d-none d-lg-table-cell">Status</th>
-                        <th className="d-none d-xl-table-cell">Fixed customer link</th>
+                        <th className="d-none d-xl-table-cell">Customer Link</th>
                         <th className="text-end" style={{ width: 280 }}>Actions</th>
                       </tr>
                     </thead>
@@ -144,7 +221,7 @@ export default function UsersPage() {
                             </div>
                           </td>
                           <td>
-                            <span className="badge rounded-pill text-bg-light border">{u.role}</span>
+                            <span className={`badge rounded-pill border ${u.role === "admin" ? "text-bg-primary" : u.role === "salesman" ? "text-bg-info" : "text-bg-light"}`}>{u.role}</span>
                           </td>
                           <td className="d-none d-lg-table-cell">
                             {u.isActive ? (
@@ -165,8 +242,8 @@ export default function UsersPage() {
                               value={u.customerId ?? ""}
                               onChange={(e) => setCustomerLink(u.id, e.target.value ? Number(e.target.value) : null)}
                               data-testid={`users-link-customer-${u.id}`}
-                              disabled={u.role !== "fixed_customer"}
-                              title={u.role !== "fixed_customer" ? "Only for fixed_customer role" : "Link customer"}
+                              disabled={u.role !== "customer"}
+                              title={u.role !== "customer" ? "Only for customer role" : "Link customer"}
                             >
                               <option value="">(none)</option>
                               {(customersQuery.data || []).map((c) => (
@@ -185,10 +262,9 @@ export default function UsersPage() {
                                 data-testid={`users-role-${u.id}`}
                                 style={{ width: 180 }}
                               >
-                                <option value="super_admin">super_admin</option>
-                                <option value="salesman">salesman</option>
-                                <option value="fixed_customer">fixed_customer</option>
-                                <option value="local_customer">local_customer</option>
+                                <option value="admin">Admin</option>
+                                <option value="salesman">Salesman</option>
+                                <option value="customer">Customer</option>
                               </select>
                               <button
                                 className="btn btn-sm btn-outline-primary"
@@ -207,7 +283,7 @@ export default function UsersPage() {
                 </div>
 
                 <div className="text-muted small mt-3">
-                  Tip: set a user to <span className="fw-semibold">fixed_customer</span> to enable linking them to a customer record.
+                  Tip: set a user to <span className="fw-semibold">customer</span> to enable linking them to a customer record.
                 </div>
               </GlassCard>
             )}

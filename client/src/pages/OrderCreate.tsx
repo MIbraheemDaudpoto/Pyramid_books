@@ -27,7 +27,7 @@ export default function OrderCreatePage() {
   const [, setLocation] = useLocation();
   const { data: me } = useMe();
 
-  const canCreate = me?.role === "super_admin" || me?.role === "salesman";
+  const canCreate = me?.role === "admin" || me?.role === "salesman";
 
   const customersQuery = useCustomers();
   const booksQuery = useBooks();

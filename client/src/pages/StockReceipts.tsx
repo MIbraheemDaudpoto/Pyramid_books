@@ -24,7 +24,7 @@ interface ReceiptItem {
 export default function StockReceiptsPage() {
   const { toast } = useToast();
   const { data: me } = useMe();
-  const canManage = me?.role === "super_admin" || me?.role === "salesman";
+  const canManage = me?.role === "admin" || me?.role === "salesman";
 
   const { data: receipts, isLoading, error } = useStockReceipts();
   const { data: booksData } = useBooks();

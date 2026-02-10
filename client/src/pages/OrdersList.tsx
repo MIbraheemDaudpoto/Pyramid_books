@@ -18,7 +18,7 @@ function formatMoney(n: any) {
 export default function OrdersListPage() {
   const { toast } = useToast();
   const { data: me } = useMe();
-  const canCreate = me?.role === "super_admin" || me?.role === "salesman";
+  const canCreate = me?.role === "admin" || me?.role === "salesman";
 
   const { data, isLoading, error } = useOrders();
   useEffect(() => {

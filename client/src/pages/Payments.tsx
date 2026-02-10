@@ -33,7 +33,7 @@ type PaymentFormState = z.infer<typeof paymentFormSchema>;
 export default function PaymentsPage() {
   const { toast } = useToast();
   const { data: me } = useMe();
-  const canCreate = me?.role === "super_admin" || me?.role === "salesman";
+  const canCreate = me?.role === "admin" || me?.role === "salesman";
 
   const paymentsQuery = usePayments();
   const customersQuery = useCustomers();

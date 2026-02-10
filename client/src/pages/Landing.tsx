@@ -34,18 +34,18 @@ export default function Landing() {
           <div className="d-flex align-items-center gap-2">
             <button
               className="btn btn-outline-primary d-none d-sm-inline-flex"
-              onClick={() => window.location.href = "/api/login"}
+              onClick={() => window.location.href = "/login"}
               data-testid="landing-login-secondary"
             >
               Sign in
             </button>
             <button
               className="btn btn-primary pb-sheen d-inline-flex align-items-center gap-2"
-              onClick={() => window.location.href = "/api/login"}
-              data-testid="landing-login"
+              onClick={() => window.location.href = "/signup"}
+              data-testid="landing-signup"
             >
               <Sparkles className="w-4 h-4" />
-              Continue
+              Get Started
             </button>
           </div>
         </div>
@@ -73,18 +73,18 @@ export default function Landing() {
               <div className="d-flex flex-column flex-sm-row gap-2 mt-4">
                 <button
                   className="btn btn-primary btn-lg pb-sheen d-inline-flex align-items-center justify-content-center gap-2"
-                  onClick={() => window.location.href = "/api/login"}
+                  onClick={() => window.location.href = "/signup"}
                   data-testid="landing-cta"
                 >
                   <Sparkles className="w-5 h-5" />
-                  Start Session
+                  Create Account
                 </button>
                 <button
                   className="btn btn-outline-primary btn-lg"
-                  onClick={() => window.location.href = "/api/login"}
-                  data-testid="landing-demo"
+                  onClick={() => window.location.href = "/login"}
+                  data-testid="landing-login"
                 >
-                  View Dashboard
+                  Sign In
                 </button>
               </div>
 
@@ -179,17 +179,17 @@ export default function Landing() {
                 <div className="mt-3 d-flex flex-column flex-sm-row gap-2">
                   <button
                     className="btn btn-primary pb-sheen"
-                    onClick={() => window.location.href = "/api/login"}
+                    onClick={() => window.location.href = "/signup"}
                     data-testid="landing-continue-bottom"
                   >
-                    Continue
+                    Get Started
                   </button>
                   <button
                     className="btn btn-outline-primary"
-                    onClick={() => window.location.href = "/api/login"}
-                    data-testid="landing-contact"
+                    onClick={() => window.location.href = "/login"}
+                    data-testid="landing-signin-bottom"
                   >
-                    Contact Admin
+                    Sign In
                   </button>
                 </div>
               </div>

@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
+import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
 import Dashboard from "@/pages/Dashboard";
 import Books from "@/pages/Books";
 import Customers from "@/pages/Customers";
@@ -23,20 +25,28 @@ import StoreCatalog from "@/pages/StoreCatalog";
 import StoreCart from "@/pages/StoreCart";
 import StoreOrders from "@/pages/StoreOrders";
 import StorePayments from "@/pages/StorePayments";
+import StoreProfile from "@/pages/StoreProfile";
+import StoreSchoolLists from "@/pages/StoreSchoolLists";
 import { useMe } from "@/hooks/use-me";
 
 function HomeGate() {
   const { data: me, isLoading } = useMe();
 
   if (isLoading) {
-    return <Landing />;
+    return (
+      <div className="d-flex align-items-center justify-content-center" style={{ minHeight: "100vh" }}>
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
   }
 
   if (!me) {
     return <Landing />;
   }
 
-  if (me.role === "fixed_customer" || me.role === "local_customer") {
+  if (me.role === "customer") {
     return <Redirect to="/store" />;
   }
 
@@ -45,7 +55,7 @@ function HomeGate() {
 
 function AdminRoutes() {
   return (
-    <RequireRole roles={["super_admin", "salesman"]}>
+    <RequireRole roles={["admin", "salesman"]}>
       <Switch>
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/books" component={Books} />
@@ -55,19 +65,19 @@ function AdminRoutes() {
         <Route path="/orders/:id" component={OrderDetail} />
         <Route path="/payments" component={Payments} />
         <Route path="/users">
-          <RequireRole roles={["super_admin"]}>
+          <RequireRole roles={["admin"]}>
             <Users />
           </RequireRole>
         </Route>
         <Route path="/stock" component={StockReceipts} />
         <Route path="/reports" component={Reports} />
         <Route path="/csv">
-          <RequireRole roles={["super_admin"]}>
+          <RequireRole roles={["admin"]}>
             <CsvImportExport />
           </RequireRole>
         </Route>
         <Route path="/discounts">
-          <RequireRole roles={["super_admin"]}>
+          <RequireRole roles={["admin"]}>
             <DiscountRules />
           </RequireRole>
         </Route>
@@ -79,7 +89,7 @@ function AdminRoutes() {
 
 function CustomerRoutes() {
   return (
-    <RequireRole roles={["fixed_customer", "local_customer"]}>
+    <RequireRole roles={["customer"]}>
       <CustomerLayout>
         <Switch>
           <Route path="/store" component={StoreCatalog} />
@@ -87,12 +97,8 @@ function CustomerRoutes() {
           <Route path="/store/orders" component={StoreOrders} />
           <Route path="/store/orders/:id" component={OrderDetail} />
           <Route path="/store/payments" component={StorePayments} />
-          <Route path="/store/profile">
-            <div className="text-center py-5">
-              <h4>My Account</h4>
-              <p className="text-muted">Account details coming soon.</p>
-            </div>
-          </Route>
+          <Route path="/store/profile" component={StoreProfile} />
+          <Route path="/store/school-lists" component={StoreSchoolLists} />
           <Route component={NotFound} />
         </Switch>
       </CustomerLayout>
@@ -104,6 +110,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={HomeGate} />
+      <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
       <Route path="/store/:rest*" component={CustomerRoutes} />
       <Route path="/store" component={CustomerRoutes} />
       <Route path="/:rest*" component={AdminRoutes} />

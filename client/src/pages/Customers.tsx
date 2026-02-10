@@ -35,7 +35,7 @@ type CustomerFormState = z.infer<typeof customerFormSchema>;
 export default function CustomersPage() {
   const { toast } = useToast();
   const { data: me } = useMe();
-  const isAdmin = me?.role === "super_admin";
+  const isAdmin = me?.role === "admin";
   const canManage = isAdmin || me?.role === "salesman";
 
   const { data, isLoading, error } = useCustomers();
@@ -64,7 +64,7 @@ export default function CustomersPage() {
 
   const [form, setForm] = useState<CustomerFormState>({
     name: "",
-    customerType: "local_customer",
+    customerType: "customer",
     phone: "",
     email: "",
     address: "",
@@ -77,7 +77,7 @@ export default function CustomersPage() {
   function openCreate() {
     setForm({
       name: "",
-      customerType: "local_customer",
+      customerType: "customer",
       phone: "",
       email: "",
       address: "",
@@ -95,7 +95,7 @@ export default function CustomersPage() {
     setEditingId(id);
     setForm({
       name: c.name ?? "",
-      customerType: c.customerType ?? "local_customer",
+      customerType: c.customerType ?? "customer",
       phone: c.phone ?? "",
       email: c.email ?? "",
       address: c.address ?? "",
@@ -327,8 +327,7 @@ export default function CustomersPage() {
             <div className="col-12 col-md-4">
               <label className="form-label">Type</label>
               <select className="form-select" value={form.customerType} onChange={(e) => setForm((p) => ({ ...p, customerType: e.target.value }))} data-testid="customer-form-type">
-                <option value="fixed_customer">fixed_customer</option>
-                <option value="local_customer">local_customer</option>
+                <option value="customer">customer</option>
               </select>
             </div>
 
@@ -381,8 +380,7 @@ export default function CustomersPage() {
             <div className="col-12 col-md-4">
               <label className="form-label">Type</label>
               <select className="form-select" value={form.customerType} onChange={(e) => setForm((p) => ({ ...p, customerType: e.target.value }))} data-testid="customer-edit-type">
-                <option value="fixed_customer">fixed_customer</option>
-                <option value="local_customer">local_customer</option>
+                <option value="customer">customer</option>
               </select>
             </div>
 

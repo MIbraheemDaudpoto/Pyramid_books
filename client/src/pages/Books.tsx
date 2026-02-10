@@ -36,7 +36,7 @@ type BookFormState = z.infer<typeof bookFormSchema>;
 export default function BooksPage() {
   const { toast } = useToast();
   const { data: me } = useMe();
-  const isAdmin = me?.role === "super_admin";
+  const isAdmin = me?.role === "admin";
 
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("");

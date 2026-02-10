@@ -270,10 +270,9 @@ export default function Dashboard() {
                   Your access
                 </div>
                 <div className="text-muted mt-2" style={{ lineHeight: 1.6 }}>
-                  {me?.role === "super_admin" && "Full system access: manage users, books, customers, orders, and payments."}
+                  {me?.role === "admin" && "Full system access: manage users, books, customers, orders, and payments."}
                   {me?.role === "salesman" && "Sales access: manage assigned customers, create orders, and record payments."}
-                  {me?.role === "fixed_customer" && "Customer access: view your profile, orders, and payment history."}
-                  {me?.role === "local_customer" && "Browse access: view book catalog and public contact info."}
+                  {me?.role === "customer" && "Customer access: view your profile, orders, and payment history."}
                   {!me && "Sign in to see your access level."}
                 </div>
               </GlassCard>

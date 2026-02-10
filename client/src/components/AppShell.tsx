@@ -20,16 +20,14 @@ import type { Role } from "@shared/schema";
 import { useMe } from "@/hooks/use-me";
 import { cn } from "@/lib/utils";
 
-function roleLabel(role?: Role) {
+function roleLabel(role?: string) {
   switch (role) {
-    case "super_admin":
-      return "Super Admin";
+    case "admin":
+      return "Admin";
     case "salesman":
       return "Sales";
-    case "fixed_customer":
-      return "Fixed Customer";
-    case "local_customer":
-      return "Local Customer";
+    case "customer":
+      return "Customer";
     default:
       return "User";
   }
@@ -56,11 +54,11 @@ export default function AppShell(props: { children: React.ReactNode }) {
       { href: "/customers", label: "Customers", icon: Users, testId: "nav-customers", show: !!me },
       { href: "/orders", label: "Orders", icon: Receipt, testId: "nav-orders", show: !!me },
       { href: "/payments", label: "Payments", icon: CreditCard, testId: "nav-payments", show: !!me },
-      { href: "/stock", label: "Stock Receipts", icon: Package, testId: "nav-stock", show: r === "super_admin" || r === "salesman" },
-      { href: "/reports", label: "Reports", icon: BarChart3, testId: "nav-reports", show: r === "super_admin" || r === "salesman" },
-      { href: "/csv", label: "Import / Export", icon: FileSpreadsheet, testId: "nav-csv", show: r === "super_admin" || r === "salesman" },
-      { href: "/discounts", label: "Discounts", icon: Percent, testId: "nav-discounts", show: r === "super_admin" },
-      { href: "/users", label: "Users", icon: Shield, testId: "nav-users", show: r === "super_admin" },
+      { href: "/stock", label: "Stock Receipts", icon: Package, testId: "nav-stock", show: r === "admin" || r === "salesman" },
+      { href: "/reports", label: "Reports", icon: BarChart3, testId: "nav-reports", show: r === "admin" || r === "salesman" },
+      { href: "/csv", label: "Import / Export", icon: FileSpreadsheet, testId: "nav-csv", show: r === "admin" || r === "salesman" },
+      { href: "/discounts", label: "Discounts", icon: Percent, testId: "nav-discounts", show: r === "admin" },
+      { href: "/users", label: "Users", icon: Shield, testId: "nav-users", show: r === "admin" },
     ];
     return base.filter((x) => x.show);
   }, [me]);
@@ -147,7 +145,10 @@ export default function AppShell(props: { children: React.ReactNode }) {
                 <button
                   type="button"
                   className="btn btn-primary pb-sheen d-inline-flex align-items-center gap-2"
-                  onClick={() => (window.location.href = "/api/logout")}
+                  onClick={async () => {
+                    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+                    window.location.href = "/";
+                  }}
                   data-testid="logout"
                 >
                   <LogOut className="w-4 h-4" />
@@ -159,7 +160,7 @@ export default function AppShell(props: { children: React.ReactNode }) {
                 <button
                   type="button"
                   className="btn btn-primary pb-sheen d-inline-flex align-items-center gap-2"
-                  onClick={() => (window.location.href = "/api/login")}
+                  onClick={() => (window.location.href = "/login")}
                   data-testid="login"
                 >
                   <Sparkles className="w-4 h-4" />
@@ -382,7 +383,10 @@ export default function AppShell(props: { children: React.ReactNode }) {
           <button
             type="button"
             className="btn btn-primary w-100 d-inline-flex align-items-center justify-content-center gap-2 pb-sheen"
-            onClick={() => (window.location.href = "/api/logout")}
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+              window.location.href = "/";
+            }}
             data-testid="logout-mobile"
           >
             <LogOut className="w-4 h-4" />

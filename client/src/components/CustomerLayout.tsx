@@ -10,21 +10,15 @@ import {
   User,
   Menu,
   X,
+  GraduationCap,
 } from "lucide-react";
 import type { Role } from "@shared/schema";
 import { useMe } from "@/hooks/use-me";
 import { cn } from "@/lib/utils";
 import { useCartCount } from "@/hooks/use-cart";
 
-function roleLabel(role?: Role) {
-  switch (role) {
-    case "fixed_customer":
-      return "Fixed Customer";
-    case "local_customer":
-      return "Local Customer";
-    default:
-      return "Customer";
-  }
+function roleLabel(role?: string) {
+  return "Customer";
 }
 
 export default function CustomerLayout(props: { children: React.ReactNode }) {
@@ -37,9 +31,10 @@ export default function CustomerLayout(props: { children: React.ReactNode }) {
     { href: "/store", label: "Browse Books", icon: BookOpen, testId: "nav-store" },
     { href: "/store/cart", label: "Shopping Cart", icon: ShoppingCart, testId: "nav-cart", badge: cartCount },
     { href: "/store/orders", label: "My Orders", icon: Receipt, testId: "nav-my-orders" },
-    { href: "/store/payments", label: "My Payments", icon: CreditCard, testId: "nav-my-payments", show: me?.role === "fixed_customer" },
+    { href: "/store/payments", label: "My Payments", icon: CreditCard, testId: "nav-my-payments" },
+    { href: "/store/school-lists", label: "School Lists", icon: GraduationCap, testId: "nav-school-lists" },
     { href: "/store/profile", label: "My Account", icon: User, testId: "nav-my-profile" },
-  ].filter((x) => x.show !== false);
+  ].filter((x) => (x as any).show !== false);
 
   return (
     <div className="app-atmosphere" style={{ minHeight: "100vh" }}>
@@ -144,7 +139,10 @@ export default function CustomerLayout(props: { children: React.ReactNode }) {
                 <button
                   type="button"
                   className="btn btn-sm btn-outline-light d-inline-flex align-items-center gap-1"
-                  onClick={() => (window.location.href = "/api/logout")}
+                  onClick={async () => {
+                    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+                    window.location.href = "/";
+                  }}
                   data-testid="customer-logout"
                 >
                   <LogOut style={{ width: 14, height: 14 }} />

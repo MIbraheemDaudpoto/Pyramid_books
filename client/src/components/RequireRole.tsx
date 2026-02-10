@@ -56,18 +56,14 @@ export default function RequireRole({ roles, children, fallback }: RequireRolePr
   }
 
   if (!me) {
-    window.location.href = "/api/login";
-    return null;
+    return <Redirect to="/login" />;
   }
 
   if (!roles.includes(me.role as Role)) {
-    const isCustomer = me.role === "fixed_customer" || me.role === "local_customer";
-    const isAdmin = me.role === "super_admin" || me.role === "salesman";
-
-    if (isCustomer) {
+    if (me.role === "customer") {
       return <Redirect to="/store" />;
     }
-    if (isAdmin) {
+    if (me.role === "admin" || me.role === "salesman") {
       return <Redirect to="/" />;
     }
 

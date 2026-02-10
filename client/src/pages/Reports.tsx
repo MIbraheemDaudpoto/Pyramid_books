@@ -46,7 +46,7 @@ export default function ReportsPage() {
 
   if (!me) return null;
 
-  const isAdmin = me.role === "super_admin";
+  const isAdmin = me.role === "admin";
 
   function exportSalesByMonth() {
     if (!data) return;
