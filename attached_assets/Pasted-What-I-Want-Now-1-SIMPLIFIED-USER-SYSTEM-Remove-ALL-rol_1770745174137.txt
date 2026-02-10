@@ -1,0 +1,261 @@
+What I Want Now:
+1. SIMPLIFIED USER SYSTEM
+Remove ALL role selection during signup. Everyone who signs up is just a Customer.
+
+Only THREE user types exist in the system:
+
+Admin - Created manually in database (not through signup)
+
+Salesman - Created by Admin only (not through signup)
+
+Customer - EVERYONE who signs up on the website
+
+What this means:
+
+When someone signs up, they're automatically a Customer
+
+No more choosing between Fixed/Local/Corporate/School
+
+No role selection during registration
+
+Admin and Salesman accounts are created separately by system admin
+
+2. SIMPLE SIGNUP PROCESS
+Registration should be super simple:
+
+Signup Form Fields:
+
+Full Name
+
+Email Address
+
+Phone Number
+
+Password (with strength meter)
+
+Confirm Password
+
+Address (optional during signup, can add later)
+
+That's it! No role selection, no account type choosing, no school details - just basic information.
+
+3. AFTER SIGNUP - Customer Can Choose Their Profile Type
+After a customer logs in for the first time, they can OPTIONALLY tell us more about themselves:
+
+On their profile page, they can select:
+
+"I'm an Individual Buyer" (default)
+
+"I'm buying for a School/Institution"
+
+"I'm buying for a Company/Organization"
+
+If they choose School/Company:
+They can add additional details:
+
+School/Company Name
+
+Contact Person (if different)
+
+Tax Number (optional)
+
+Special requirements
+
+BUT THIS IS OPTIONAL! They can just stay as Individual Buyer.
+
+4. School Lists Feature Still Needed
+Even with simplified signup, customers should still be able to create book lists for different purposes:
+
+Example:
+I'm a customer who buys books for:
+
+My own children's school (CCES)
+
+My friend's school (JPS)
+
+My cousin's academy (Lucent Kids)
+
+I should be able to:
+
+Create lists for each school
+
+Add books to each list
+
+Save lists for future orders
+
+Share lists with my salesman
+
+5. SIMPLIFIED WORKFLOW
+Here's how everything works now:
+
+New Customer Journey:
+
+Visits website → Clicks "Sign Up"
+
+Fills simple form (name, email, phone, password) → Account created
+
+Logs in → Goes to book store
+
+Can browse, add to cart, create lists
+
+When ready to order, goes to checkout
+
+Salesman processes their order
+
+Salesman Journey:
+
+Admin creates salesman account
+
+Salesman logs in → Sees dashboard
+
+Manages assigned customers
+
+Processes customer orders
+
+Updates stock from publishers
+
+Tracks commissions
+
+Admin Journey:
+
+Has special admin login
+
+Manages all users
+
+Creates salesman accounts
+
+Views all reports
+
+Controls system settings
+
+6. WHAT STAYS THE SAME:
+Professional e-commerce design (like Amazon for books)
+
+Shopping cart and checkout
+
+Order tracking
+
+Invoice download
+
+Search and filters
+
+Product reviews
+
+Mobile responsive design
+
+7. WHAT GETS SIMPLIFIED:
+No more role selection during signup
+
+No more Fixed vs Local Customer confusion
+
+No complex registration forms
+
+Everyone starts as basic Customer
+
+Can add details later if needed
+
+8. NEW FEATURES STILL NEEDED:
+A. School Lists System:
+
+Create lists for different purposes
+
+Add books with quantities
+
+Save and re-use lists
+
+Share with salesman
+
+B. Authentication System:
+
+Clean login page
+
+Simple signup form
+
+Forgot password with email
+
+Secure password reset
+
+C. Customer Dashboard:
+
+My Orders
+
+My Lists (School Lists)
+
+My Profile
+
+Payment Methods
+
+Address Book
+
+9. Implementation Order:
+Phase 1 - Authentication:
+
+Simple login page
+
+Simple signup form (no role selection)
+
+Forgot password system
+
+Phase 2 - Customer Experience:
+
+Book catalog with search/filters
+
+Shopping cart
+
+Checkout process
+
+Order tracking
+
+Phase 3 - School Lists Feature:
+
+Create list page
+
+Add books to list
+
+Manage lists
+
+Convert list to order
+
+Phase 4 - Salesman & Admin:
+
+Salesman dashboard
+
+Order processing
+
+Stock management
+
+Admin panel
+
+10. Why This Simpler System is Better:
+Easier for Customers - No confusion during signup
+
+Easier to Manage - Less complexity in code
+
+More Flexible - Customers can tell us what they need AFTER signing up
+
+Better User Experience - Quick signup = more signups
+
+Same Features - All important features still available
+
+Scalable - Easy to add more features later
+
+11. Testing Checklist:
+Can sign up with just name, email, phone, password
+
+No role selection during signup
+
+Can login immediately after signup
+
+Can create school lists after login
+
+Can add books to shopping cart
+
+Checkout works smoothly
+
+Salesman can see customer orders
+
+Admin can manage all users
+
+Forgot password sends email
+
+Mobile view works well
