@@ -1,0 +1,163 @@
+What's Already Done:
+Basic SQLite database setup with tables
+
+Some authentication code exists
+
+A few UI pages are started
+
+But there's a bug causing problems
+
+What's Broken Right Now:
+There's an error on the Customers page saying "money is not defined" on line 280. Please fix this first so the admin can see customer credit limits properly.
+
+What I Need You to Add:
+1. Make It Look Professional and Attractive
+Use a clean blue color scheme (#2C3E50 for dark blue, #3498DB for light blue)
+
+Make buttons look nice with gradients and hover effects
+
+Add subtle shadows to cards and tables
+
+Make sure it works well on phones and tablets
+
+Add loading animations when data is loading
+
+Show nice success/error messages when users do actions
+
+2. Add Stock Management for Salesmen
+Salesmen need to record when they receive books from publishers like Oxford, Paramount, or Gaba.
+
+Please add:
+
+A new page where salesmen can add stock they received
+
+They should select which publisher it came from
+
+Add which books and how many copies
+
+Automatically update the book inventory numbers
+
+Let salesmen view their stock history
+
+Let them print receipts for stock received
+
+3. Add CSV Import/Export (Super Important!)
+Make it easy to work with data in Excel/Google Sheets:
+
+For Books:
+
+Add an "Import Books" button on the books page
+
+Let me upload a CSV file with book details
+
+Download a sample template so I know the format
+
+Export all books to CSV with one click
+
+For Customers:
+
+Same import/export for customer lists
+
+For stock records too
+
+4. Add Reporting System That Everyone Can Use
+Every user type should be able to generate their own reports:
+
+For Admin:
+
+Sales reports with charts
+
+What books are selling best
+
+How salesmen are performing
+
+Which customers owe money
+
+For Salesmen:
+
+Their personal sales reports
+
+Commission calculations
+
+Stock they've received vs sold
+
+For Customers:
+
+Their order history
+
+Payment records
+
+Invoices
+
+All reports should:
+
+Let users pick date ranges
+
+Export as PDF, Excel, or CSV
+
+Look professional with company branding
+
+5. Complete the Missing Parts
+Finish these modules that are incomplete:
+
+Order creation wizard (with real-time price calculation)
+
+Payment tracking system
+
+Salary calculation for salesmen
+
+Invoice generation in PDF format
+
+Dashboard statistics for all user types
+
+6. Fix All Existing Issues
+Make sure all pages load without errors
+
+Fix any broken navigation
+
+Test that all user roles work properly
+
+Add proper error messages everywhere
+
+How to Organize the Code:
+Please create these folders and files:
+
+text
+/utils/           - For CSV processing, PDF generation, etc.
+/routes/          - New routes for stock, reports, CSV
+/controllers/     - Business logic for new features
+/views/           - New EJS pages for stock, reports
+What I Want Most Right Now:
+First - Fix that money formatting error on line 280
+
+Second - Make the UI look really nice and professional
+
+Third - Add the CSV import/export features
+
+Fourth - Add the stock management for salesmen
+
+Fifth - Add the reporting system
+
+Testing Checklist (Please Check These Work):
+Admin can login and see all customers without errors
+
+Salesmen can add stock received from publishers
+
+Can import 100 books from a CSV file
+
+Can export a sales report as PDF
+
+Customers can view their order history
+
+Everything looks good on mobile phones
+
+Remember:
+Use clear, commented code
+
+Add proper error handling
+
+Make forms validate data properly
+
+Keep the existing working parts working
+
+Make it user-friendly for non-technical people
