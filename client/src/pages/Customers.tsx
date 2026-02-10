@@ -14,6 +14,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { z } from "zod";
 
+function money(n: any) {
+  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(Number(n || 0));
+}
+
 const customerFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   customerType: z.string().min(1, "Customer type is required"),
