@@ -4,9 +4,11 @@ import {
   insertCustomerSchema,
   roles,
   type Book,
+  type CartResponse,
   type Customer,
   type CurrentUserResponse,
   type DashboardResponse,
+  type DiscountRule,
   type OrderWithItemsResponse,
   type OrdersListResponse,
   type PaymentsListResponse,
@@ -243,6 +245,7 @@ export const api = {
               }),
             )
             .min(1),
+          discountPercentage: z.coerce.number().min(0).max(100).optional(),
           discount: z.coerce.number().nonnegative().optional(),
           tax: z.coerce.number().nonnegative().optional(),
           notes: z.string().optional(),
@@ -381,6 +384,101 @@ export const api = {
       responses: {
         200: z.custom<ReportResponse>(),
         401: errorSchemas.unauthorized,
+      },
+    },
+  },
+
+  cart: {
+    list: {
+      method: "GET" as const,
+      path: "/api/cart",
+      responses: {
+        200: z.custom<CartResponse>(),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    add: {
+      method: "POST" as const,
+      path: "/api/cart",
+      input: z.object({
+        bookId: z.coerce.number(),
+        qty: z.coerce.number().int().positive().default(1),
+      }).strict(),
+      responses: {
+        201: z.custom<CartResponse>(),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+      },
+    },
+    update: {
+      method: "PATCH" as const,
+      path: "/api/cart/:id",
+      input: z.object({
+        qty: z.coerce.number().int().positive(),
+      }).strict(),
+      responses: {
+        200: z.custom<CartResponse>(),
+        401: errorSchemas.unauthorized,
+        404: errorSchemas.notFound,
+      },
+    },
+    remove: {
+      method: "DELETE" as const,
+      path: "/api/cart/:id",
+      responses: {
+        200: z.custom<CartResponse>(),
+        401: errorSchemas.unauthorized,
+        404: errorSchemas.notFound,
+      },
+    },
+    checkout: {
+      method: "POST" as const,
+      path: "/api/cart/checkout",
+      input: z.object({
+        notes: z.string().optional(),
+      }).optional(),
+      responses: {
+        201: z.custom<OrderWithItemsResponse>(),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+      },
+    },
+  },
+
+  discountRules: {
+    list: {
+      method: "GET" as const,
+      path: "/api/discount-rules",
+      responses: {
+        200: z.array(z.custom<DiscountRule>()),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    create: {
+      method: "POST" as const,
+      path: "/api/discount-rules",
+      input: z.object({
+        ruleName: z.string().min(1),
+        discountPercentage: z.coerce.number().min(0).max(100),
+        minOrderAmount: z.coerce.number().nonnegative().default(0),
+        validFrom: z.string().optional(),
+        validTo: z.string().optional(),
+        isActive: z.boolean().default(true),
+      }).strict(),
+      responses: {
+        201: z.custom<DiscountRule>(),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+        403: errorSchemas.forbidden,
+      },
+    },
+    delete: {
+      method: "DELETE" as const,
+      path: "/api/discount-rules/:id",
+      responses: {
+        204: z.void(),
+        401: errorSchemas.unauthorized,
+        403: errorSchemas.forbidden,
       },
     },
   },

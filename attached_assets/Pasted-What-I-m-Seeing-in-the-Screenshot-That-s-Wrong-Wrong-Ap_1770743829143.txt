@@ -1,0 +1,358 @@
+What I'm Seeing in the Screenshot That's Wrong:
+Wrong Application Name - It says "Python Books" but should be "Pyramid Books"
+
+No Role-Based Security - All users can see everything! This is a big security problem
+
+Confusing Interface - The book listing shows "Sample Book Title 50" etc. which looks like test data
+
+Missing Customer Features - No e-commerce shopping experience for customers
+
+Critical Problems to Fix Immediately:
+1. FIX ROLE-BASED SECURITY (MOST IMPORTANT!)
+Currently, every user can see everything. This is completely wrong. Please implement proper role-based access control:
+
+Super Admin Only:
+
+User management (add/edit/delete users)
+
+System settings
+
+All reports
+
+Salary management
+
+Salesman Only:
+
+Add stock received from publishers
+
+Create orders for customers
+
+View their own sales and commission
+
+Manage their assigned customers
+
+Fixed Customers Can:
+
+Browse books and shop online
+
+Place orders (up to their credit limit)
+
+View their order history and invoices
+
+Make payments
+
+Local Customers Can:
+
+Browse and buy books
+
+View their orders
+
+Download invoices
+
+NO USER should see what they're not authorized to see!
+
+2. RENAME EVERYTHING FROM "PYTHON" TO "PYRAMID"
+The screenshot shows "Python Books" everywhere. Change ALL occurrences to "Pyramid Books" - in titles, headers, logos, everywhere.
+
+3. CREATE A PROPER E-COMMERCE STORE FOR CUSTOMERS
+Customers should have a completely different experience:
+
+For Fixed Customers:
+
+A beautiful book catalog with search and filters
+
+Shopping cart functionality
+
+Checkout process with their credit account
+
+Order tracking
+
+Invoice management
+
+Payment history
+
+For Local Customers:
+
+Same e-commerce experience but with immediate payment
+
+No credit account - pay at checkout
+
+Customer Portal Features:
+
+Customer dashboard with their stats
+
+Wishlist/save for later feature
+
+Order history with status
+
+Download invoices as PDF
+
+Profile management
+
+4. SALESMAN-ONLY ENTRY SYSTEM
+Every entry in the system MUST be done by salesmen:
+
+Salesmen add stock received from publishers
+
+Salesmen create orders for customers
+
+Salesmen record payments from customers
+
+Salesmen update order status
+
+Customers CANNOT:
+
+Create their own orders (except through shopping cart)
+
+Update any records
+
+Access admin functions
+
+5. PERCENTAGE-BASED DISCOUNT SYSTEM
+Change the discount system:
+
+Only percentage discounts allowed (not fixed amount)
+
+Buying price from publisher → Selling price to customer
+
+Salesmen can apply percentage discount at order level
+
+Admin can set default discount percentages
+
+Track profit margin = (Selling Price - Buying Price) × Quantity
+
+What I Need You to Build:
+Phase 1: Fix Security and Access Control
+Create proper middleware that checks user roles
+
+Show different navigation menus for each role
+
+Restrict access to unauthorized pages
+
+Show "Access Denied" message if wrong role tries to access
+
+Phase 2: Build Customer E-Commerce Portal
+Create /customer/store with:
+
+Book Catalog Page:
+
+Grid/List view of books
+
+Search by title, author, ISBN
+
+Filter by category, price range
+
+Sort by popularity, price, name
+
+Product Detail Page:
+
+Book image, title, author, description
+
+Price, stock availability
+
+Add to cart button
+
+Customer reviews section
+
+Shopping Cart:
+
+Add/remove items
+
+Update quantities
+
+See subtotal
+
+Apply discount (if available)
+
+Checkout Process:
+
+For Fixed Customers: Place order using credit
+
+For Local Customers: Payment required
+
+Select delivery address
+
+Confirm order
+
+Phase 3: Salesman Workflow
+Salesmen should have:
+
+Dashboard: Their stats and quick actions
+
+Stock Management: Add stock from Oxford/Paramount/Gaba
+
+Order Management: Create/view customer orders
+
+Customer Management: View assigned customers
+
+Commission Tracker: See their earnings
+
+Phase 4: Admin Control Panel
+Admin should have complete control:
+
+User Management: Add/edit all users
+
+System Settings: Configure discounts, tax rates, etc.
+
+Reports: View all business analytics
+
+Audit Logs: See who did what in the system
+
+Database Changes Needed:
+Add New Tables:
+sql
+-- Shopping cart for customers
+CREATE TABLE shopping_cart (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER,
+    book_id INTEGER,
+    quantity INTEGER,
+    added_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Wishlist for customers
+CREATE TABLE wishlist (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER,
+    book_id INTEGER,
+    added_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Book reviews/ratings
+CREATE TABLE reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER,
+    customer_id INTEGER,
+    rating INTEGER,
+    comment TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Discount rules (percentage only)
+CREATE TABLE discount_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    rule_name TEXT,
+    discount_percentage REAL,
+    min_order_amount REAL,
+    valid_from DATE,
+    valid_to DATE,
+    created_by INTEGER
+);
+Update Existing Tables:
+Add buying_price to books table to track profit margins:
+
+sql
+ALTER TABLE books ADD COLUMN buying_price REAL;
+New UI Requirements:
+Customer Store Theme:
+Clean, modern e-commerce design
+
+Product cards with book covers
+
+Shopping cart icon in header
+
+Customer account dropdown
+
+Responsive design for mobile shopping
+
+Different Layouts for Different Roles:
+Customer Layout:
+
+Header with logo, search, cart, account
+
+No sidebar - full-width product display
+
+Simple navigation
+
+Salesman Layout:
+
+Sidebar with salesman-specific menu
+
+Dashboard with their metrics
+
+Clean interface for data entry
+
+Admin Layout:
+
+Full control panel with all options
+
+Advanced analytics and reports
+
+System management tools
+
+Workflow Examples:
+Customer Buying Process:
+Customer logs in → Goes to book store
+
+Browses books, adds to cart
+
+Goes to checkout
+
+For fixed customer: Places order using credit
+
+For local customer: Pays immediately
+
+Salesman is notified of new order
+
+Salesman processes and delivers order
+
+Customer tracks order and downloads invoice
+
+Salesman Work Process:
+Salesman logs in → Sees dashboard
+
+Receives stock from publisher (Oxford/Paramount/Gaba)
+
+Updates inventory
+
+Creates orders for customers (or processes customer cart orders)
+
+Records customer payments
+
+Views their commission earnings
+
+Admin Management:
+Manages all users
+
+Sets discount percentages
+
+Views all reports
+
+Processes salesman salaries
+
+Monitors business performance
+
+Immediate Action Items:
+First: Fix the role-based access - nobody should see unauthorized content
+
+Second: Rename "Python Books" to "Pyramid Books" everywhere
+
+Third: Create customer e-commerce portal
+
+Fourth: Implement salesman-only entry system
+
+Fifth: Switch to percentage-only discounts
+
+Testing Checklist:
+Customer cannot see admin pages
+
+Salesman cannot see other salesman's data
+
+E-commerce store works for customers
+
+Shopping cart functions properly
+
+Percentage discounts calculate correctly
+
+All "Python" references changed to "Pyramid"
+
+Profit margins show correctly (selling - buying price)
+
+Please Start With:
+Create role-checking middleware that redirects unauthorized users
+
+Build the customer shopping experience
+
+Fix all "Python Books" references
+
+Implement the new discount system

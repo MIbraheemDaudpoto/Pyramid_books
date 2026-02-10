@@ -6,6 +6,7 @@ import {
   CreditCard,
   LayoutDashboard,
   LogOut,
+  Percent,
   Shield,
   Users,
   Receipt,
@@ -58,6 +59,7 @@ export default function AppShell(props: { children: React.ReactNode }) {
       { href: "/stock", label: "Stock Receipts", icon: Package, testId: "nav-stock", show: r === "super_admin" || r === "salesman" },
       { href: "/reports", label: "Reports", icon: BarChart3, testId: "nav-reports", show: r === "super_admin" || r === "salesman" },
       { href: "/csv", label: "Import / Export", icon: FileSpreadsheet, testId: "nav-csv", show: r === "super_admin" || r === "salesman" },
+      { href: "/discounts", label: "Discounts", icon: Percent, testId: "nav-discounts", show: r === "super_admin" },
       { href: "/users", label: "Users", icon: Shield, testId: "nav-users", show: r === "super_admin" },
     ];
     return base.filter((x) => x.show);

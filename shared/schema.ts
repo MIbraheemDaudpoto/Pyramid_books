@@ -91,6 +91,9 @@ export const books = pgTable(
     publisher: text("publisher"),
     category: varchar("category", { length: 64 }),
     description: text("description"),
+    buyingPrice: numeric("buying_price", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
     unitPrice: numeric("unit_price", { precision: 12, scale: 2 })
       .notNull()
       .default("0"),
@@ -120,6 +123,9 @@ export const orders = pgTable(
     orderDate: timestamp("order_date").notNull().defaultNow(),
     status: varchar("status", { length: 32 }).notNull().default("draft"),
     subtotal: numeric("subtotal", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    discountPercentage: numeric("discount_percentage", { precision: 5, scale: 2 })
       .notNull()
       .default("0"),
     discount: numeric("discount", { precision: 12, scale: 2 })
@@ -239,6 +245,48 @@ export const stockReceiptItems = pgTable(
   ],
 );
 
+// ===== Shopping Cart =====
+export const shoppingCart = pgTable(
+  "shopping_cart",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    bookId: integer("book_id")
+      .notNull()
+      .references(() => books.id, { onDelete: "cascade" }),
+    qty: integer("qty").notNull().default(1),
+    addedAt: timestamp("added_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("IDX_shopping_cart_user").on(table.userId),
+    index("IDX_shopping_cart_book").on(table.bookId),
+  ],
+);
+
+// ===== Discount Rules =====
+export const discountRules = pgTable(
+  "discount_rules",
+  {
+    id: serial("id").primaryKey(),
+    ruleName: text("rule_name").notNull(),
+    discountPercentage: numeric("discount_percentage", { precision: 5, scale: 2 })
+      .notNull()
+      .default("0"),
+    minOrderAmount: numeric("min_order_amount", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    validFrom: timestamp("valid_from"),
+    validTo: timestamp("valid_to"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdByUserId: varchar("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+);
+
 // ===== Insert schemas =====
 export const insertCustomerSchema = createInsertSchema(customers).omit({
   id: true,
@@ -254,6 +302,7 @@ export const insertOrderSchema = createInsertSchema(orders).omit({
   id: true,
   orderDate: true,
   subtotal: true,
+  discountPercentage: true,
   discount: true,
   tax: true,
   total: true,
@@ -288,6 +337,9 @@ export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 
 export type FixedCustomerUser = typeof fixedCustomerUsers.$inferSelect;
+
+export type CartItem = typeof shoppingCart.$inferSelect;
+export type DiscountRule = typeof discountRules.$inferSelect;
 
 // ===== Explicit API request/response types =====
 export type CurrentUserResponse =
@@ -327,6 +379,7 @@ export type CreateOrderItemInput = Pick<
 export interface CreateOrderRequest {
   customerId: number;
   items: CreateOrderItemInput[];
+  discountPercentage?: number;
   discount?: number;
   tax?: number;
   notes?: string;
@@ -345,8 +398,9 @@ export interface OrderWithItemsResponse extends Order {
 }
 
 export type OrdersListResponse = Array<
-  Pick<Order, "id" | "orderNo" | "customerId" | "orderDate" | "status" | "total"> & {
+  Pick<Order, "id" | "orderNo" | "customerId" | "orderDate" | "status" | "subtotal" | "discount" | "discountPercentage" | "tax" | "total"> & {
     customerName: string;
+    itemCount?: number;
   }
 >;
 
@@ -400,4 +454,14 @@ export interface ReportResponse {
   topCustomers: Array<{ customerId: number; name: string; totalSpent: number; orderCount: number }>;
   outstandingBalances: Array<{ customerId: number; name: string; totalOrders: number; totalPaid: number; balance: number }>;
   salesmanPerformance: Array<{ userId: string; name: string; orderCount: number; totalSales: number }>;
+}
+
+export interface CartItemWithBook extends CartItem {
+  book: Pick<Book, "id" | "title" | "isbn" | "author" | "unitPrice" | "stockQty" | "publisher">;
+}
+
+export type CartResponse = CartItemWithBook[];
+
+export interface DiscountRulesListResponse {
+  rules: DiscountRule[];
 }

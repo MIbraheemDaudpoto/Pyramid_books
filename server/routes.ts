@@ -622,6 +622,131 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // Cart
+  app.get(api.cart.list.path, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const items = await storage.listCartItems(userId);
+      res.json(items);
+    } catch (err: any) {
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.post(api.cart.add.path, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const input = api.cart.add.input.parse(req.body);
+      const items = await storage.addToCart(userId, input.bookId, input.qty);
+      res.status(201).json(items);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join("."),
+        });
+      }
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.patch(api.cart.update.path, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const input = api.cart.update.input.parse(req.body);
+      const items = await storage.updateCartItem(userId, Number(req.params.id), input.qty);
+      res.json(items);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join("."),
+        });
+      }
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.delete(api.cart.remove.path, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const items = await storage.removeCartItem(userId, Number(req.params.id));
+      res.json(items);
+    } catch (err: any) {
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.post(api.cart.checkout.path, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const input = api.cart.checkout.input?.parse(req.body ?? {});
+      const order = await storage.checkoutCart(userId, input?.notes);
+      res.status(201).json(order);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join("."),
+        });
+      }
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
+  // Discount Rules
+  app.get(api.discountRules.list.path, isAuthenticated, async (_req: any, res) => {
+    try {
+      const rules = await storage.listDiscountRules();
+      res.json(rules);
+    } catch (err: any) {
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.post(api.discountRules.create.path, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const me = await storage.getCurrentUser(userId);
+      if (!me || me.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const input = api.discountRules.create.input.parse(req.body);
+      const created = await storage.createDiscountRule(userId, input);
+      res.status(201).json(created);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join("."),
+        });
+      }
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.delete(api.discountRules.delete.path, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const me = await storage.getCurrentUser(userId);
+      if (!me || me.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      await storage.deleteDiscountRule(Number(req.params.id));
+      res.status(204).send();
+    } catch (err: any) {
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
   // Seed once on boot (safe to call repeatedly)
   await storage.seedIfEmpty();
 

@@ -2,14 +2,17 @@ import { and, desc, eq, gte, ilike, inArray, lte, sql } from "drizzle-orm";
 import {
   books,
   customers,
+  discountRules,
   fixedCustomerUsers,
   orderItems,
   orders,
   payments,
+  shoppingCart,
   stockReceipts,
   stockReceiptItems,
   users,
   type Book,
+  type CartResponse,
   type CreateBookRequest,
   type CreateCustomerRequest,
   type CreateOrderRequest,
@@ -18,6 +21,7 @@ import {
   type Customer,
   type CurrentUserResponse,
   type DashboardResponse,
+  type DiscountRule,
   type OrderWithItemsResponse,
   type OrdersListResponse,
   type PaymentsListResponse,
@@ -82,6 +86,18 @@ export interface IStorage {
   listStockReceipts(): Promise<StockReceiptsListResponse>;
   createStockReceipt(userId: string, input: CreateStockReceiptRequest): Promise<StockReceiptWithItems>;
   getReports(from?: string, to?: string): Promise<ReportResponse>;
+
+  listCartItems(userId: string): Promise<CartResponse>;
+  addToCart(userId: string, bookId: number, qty: number): Promise<CartResponse>;
+  updateCartItem(userId: string, cartItemId: number, qty: number): Promise<CartResponse>;
+  removeCartItem(userId: string, cartItemId: number): Promise<CartResponse>;
+  clearCart(userId: string): Promise<void>;
+  checkoutCart(userId: string, notes?: string): Promise<OrderWithItemsResponse>;
+
+  listDiscountRules(): Promise<DiscountRule[]>;
+  createDiscountRule(userId: string, input: any): Promise<DiscountRule>;
+  deleteDiscountRule(id: number): Promise<void>;
+  findBestDiscount(subtotal: number): Promise<number>;
 
   seedIfEmpty(): Promise<void>;
 }
@@ -290,6 +306,8 @@ export class DatabaseStorage implements IStorage {
       whereClause = eq(orders.createdByUserId, userId);
     } else if (me.role === "fixed_customer") {
       whereClause = me.customerId ? eq(orders.customerId, me.customerId) : sql`false`;
+    } else if (me.role === "local_customer") {
+      whereClause = eq(orders.createdByUserId, userId);
     } else {
       whereClause = sql`false`;
     }
@@ -301,6 +319,10 @@ export class DatabaseStorage implements IStorage {
         customerId: orders.customerId,
         orderDate: orders.orderDate,
         status: orders.status,
+        subtotal: orders.subtotal,
+        discount: orders.discount,
+        discountPercentage: orders.discountPercentage,
+        tax: orders.tax,
         total: orders.total,
         customerName: customers.name,
       })
@@ -437,7 +459,11 @@ export class DatabaseStorage implements IStorage {
       subtotal += line;
     }
 
-    const discount = input.discount ?? 0;
+    let discountPercentage = input.discountPercentage ?? 0;
+    let discount = input.discount ?? 0;
+    if (discountPercentage > 0) {
+      discount = subtotal * discountPercentage / 100;
+    }
     const tax = input.tax ?? 0;
     const total = subtotal - discount + tax;
 
@@ -451,6 +477,7 @@ export class DatabaseStorage implements IStorage {
         createdByUserId: userId,
         status: "confirmed",
         subtotal: String(subtotal) as any,
+        discountPercentage: String(discountPercentage) as any,
         discount: String(discount) as any,
         tax: String(tax) as any,
         total: String(total) as any,
@@ -893,6 +920,279 @@ export class DatabaseStorage implements IStorage {
       },
       recentOrders: recentOrders.slice(0, 8),
     };
+  }
+
+  private async _getCartItems(userId: string): Promise<CartResponse> {
+    const rows = await db
+      .select({
+        id: shoppingCart.id,
+        userId: shoppingCart.userId,
+        bookId: shoppingCart.bookId,
+        qty: shoppingCart.qty,
+        addedAt: shoppingCart.addedAt,
+        book: {
+          id: books.id,
+          title: books.title,
+          isbn: books.isbn,
+          author: books.author,
+          unitPrice: books.unitPrice,
+          stockQty: books.stockQty,
+          publisher: books.publisher,
+        },
+      })
+      .from(shoppingCart)
+      .innerJoin(books, eq(books.id, shoppingCart.bookId))
+      .where(eq(shoppingCart.userId, userId))
+      .orderBy(desc(shoppingCart.addedAt));
+
+    return rows.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      bookId: r.bookId,
+      qty: r.qty,
+      addedAt: r.addedAt,
+      book: r.book,
+    }));
+  }
+
+  async listCartItems(userId: string): Promise<CartResponse> {
+    return this._getCartItems(userId);
+  }
+
+  async addToCart(userId: string, bookId: number, qty: number): Promise<CartResponse> {
+    const [existing] = await db
+      .select()
+      .from(shoppingCart)
+      .where(and(eq(shoppingCart.userId, userId), eq(shoppingCart.bookId, bookId)));
+
+    if (existing) {
+      await db
+        .update(shoppingCart)
+        .set({ qty: existing.qty + qty })
+        .where(eq(shoppingCart.id, existing.id));
+    } else {
+      await db.insert(shoppingCart).values({ userId, bookId, qty });
+    }
+
+    return this._getCartItems(userId);
+  }
+
+  async updateCartItem(userId: string, cartItemId: number, qty: number): Promise<CartResponse> {
+    const [existing] = await db
+      .select()
+      .from(shoppingCart)
+      .where(and(eq(shoppingCart.id, cartItemId), eq(shoppingCart.userId, userId)));
+
+    if (!existing) {
+      throw Object.assign(new Error("Cart item not found"), { status: 404 });
+    }
+
+    await db.update(shoppingCart).set({ qty }).where(eq(shoppingCart.id, cartItemId));
+    return this._getCartItems(userId);
+  }
+
+  async removeCartItem(userId: string, cartItemId: number): Promise<CartResponse> {
+    const [existing] = await db
+      .select()
+      .from(shoppingCart)
+      .where(and(eq(shoppingCart.id, cartItemId), eq(shoppingCart.userId, userId)));
+
+    if (!existing) {
+      throw Object.assign(new Error("Cart item not found"), { status: 404 });
+    }
+
+    await db.delete(shoppingCart).where(eq(shoppingCart.id, cartItemId));
+    return this._getCartItems(userId);
+  }
+
+  async clearCart(userId: string): Promise<void> {
+    await db.delete(shoppingCart).where(eq(shoppingCart.userId, userId));
+  }
+
+  async checkoutCart(userId: string, notes?: string): Promise<OrderWithItemsResponse> {
+    const me = await this.getCurrentUser(userId);
+    if (!me) {
+      throw Object.assign(new Error("Unauthorized"), { status: 401 });
+    }
+
+    const cartItems = await this._getCartItems(userId);
+    if (cartItems.length === 0) {
+      throw Object.assign(new Error("Cart is empty"), { status: 400 });
+    }
+
+    let customerId: number;
+
+    if (me.role === "fixed_customer") {
+      if (!me.customerId) {
+        throw Object.assign(new Error("No linked customer account"), { status: 400 });
+      }
+      customerId = me.customerId;
+    } else if (me.role === "local_customer") {
+      const [walkIn] = await db
+        .select({ id: customers.id })
+        .from(customers)
+        .where(eq(customers.customerType, "local_customer"))
+        .limit(1);
+      if (!walkIn) {
+        throw Object.assign(new Error("No local customer record found"), { status: 400 });
+      }
+      customerId = walkIn.id;
+    } else {
+      throw Object.assign(new Error("Only customers can checkout cart"), { status: 403 });
+    }
+
+    let subtotal = 0;
+    const orderItemsData: Array<{ bookId: number; qty: number; unitPrice: number; lineTotal: number }> = [];
+
+    for (const item of cartItems) {
+      const unitPrice = toNumber(item.book.unitPrice);
+      const lineTotal = unitPrice * item.qty;
+
+      if (item.book.stockQty < item.qty) {
+        throw Object.assign(new Error(`Insufficient stock for ${item.book.title}`), { status: 400 });
+      }
+
+      orderItemsData.push({
+        bookId: item.bookId,
+        qty: item.qty,
+        unitPrice,
+        lineTotal,
+      });
+      subtotal += lineTotal;
+    }
+
+    const discountPct = await this.findBestDiscount(subtotal);
+    const discountAmount = subtotal * discountPct / 100;
+    const total = subtotal - discountAmount;
+
+    if (me.role === "fixed_customer") {
+      const [cust] = await db
+        .select({ creditLimit: customers.creditLimit })
+        .from(customers)
+        .where(eq(customers.id, customerId));
+
+      if (cust) {
+        const creditLimit = toNumber(cust.creditLimit);
+
+        const [{ total: totalOrders }] = await db
+          .select({ total: sql<number>`coalesce(sum(${orders.total}), 0)` })
+          .from(orders)
+          .where(eq(orders.customerId, customerId));
+
+        const [{ total: totalPaid }] = await db
+          .select({ total: sql<number>`coalesce(sum(${payments.amount}), 0)` })
+          .from(payments)
+          .where(eq(payments.customerId, customerId));
+
+        const outstanding = Number(totalOrders) - Number(totalPaid);
+        if (outstanding + total > creditLimit) {
+          throw Object.assign(
+            new Error(`Order exceeds credit limit. Outstanding: ${outstanding.toFixed(2)}, New order: ${total.toFixed(2)}, Credit limit: ${creditLimit.toFixed(2)}`),
+            { status: 400 },
+          );
+        }
+      }
+    }
+
+    const orderNo = `PB-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1e6)).padStart(6, "0")}`;
+
+    const [created] = await db
+      .insert(orders)
+      .values({
+        orderNo,
+        customerId,
+        createdByUserId: userId,
+        status: "confirmed",
+        subtotal: String(subtotal) as any,
+        discountPercentage: String(discountPct) as any,
+        discount: String(discountAmount) as any,
+        tax: "0" as any,
+        total: String(total) as any,
+        notes: notes || null,
+      })
+      .returning();
+
+    for (const item of orderItemsData) {
+      await db.insert(orderItems).values({
+        orderId: created.id,
+        bookId: item.bookId,
+        qty: item.qty,
+        unitPrice: String(item.unitPrice) as any,
+        lineTotal: String(item.lineTotal) as any,
+      });
+
+      await db
+        .update(books)
+        .set({ stockQty: sql`${books.stockQty} - ${item.qty}` })
+        .where(eq(books.id, item.bookId));
+    }
+
+    await this.clearCart(userId);
+
+    const full = await this.getOrderForUser(userId, created.id);
+    if (!full) {
+      throw Object.assign(new Error("Order not found after creation"), { status: 500 });
+    }
+    return full;
+  }
+
+  async listDiscountRules(): Promise<DiscountRule[]> {
+    return await db
+      .select()
+      .from(discountRules)
+      .where(eq(discountRules.isActive, true))
+      .orderBy(desc(discountRules.createdAt));
+  }
+
+  async createDiscountRule(userId: string, input: any): Promise<DiscountRule> {
+    const [created] = await db
+      .insert(discountRules)
+      .values({
+        ruleName: input.ruleName,
+        discountPercentage: String(input.discountPercentage) as any,
+        minOrderAmount: String(input.minOrderAmount ?? 0) as any,
+        validFrom: input.validFrom ? new Date(input.validFrom) : null,
+        validTo: input.validTo ? new Date(input.validTo) : null,
+        isActive: input.isActive ?? true,
+        createdByUserId: userId,
+      })
+      .returning();
+    return created;
+  }
+
+  async deleteDiscountRule(id: number): Promise<void> {
+    const [existing] = await db
+      .select({ id: discountRules.id })
+      .from(discountRules)
+      .where(eq(discountRules.id, id));
+    if (!existing) {
+      throw Object.assign(new Error("Discount rule not found"), { status: 404 });
+    }
+    await db.delete(discountRules).where(eq(discountRules.id, id));
+  }
+
+  async findBestDiscount(subtotal: number): Promise<number> {
+    const now = new Date();
+    const rules = await db
+      .select()
+      .from(discountRules)
+      .where(eq(discountRules.isActive, true));
+
+    let bestPct = 0;
+    for (const rule of rules) {
+      const minAmount = toNumber(rule.minOrderAmount);
+      if (subtotal < minAmount) continue;
+
+      if (rule.validFrom && now < new Date(rule.validFrom)) continue;
+      if (rule.validTo && now > new Date(rule.validTo)) continue;
+
+      const pct = toNumber(rule.discountPercentage);
+      if (pct > bestPct) {
+        bestPct = pct;
+      }
+    }
+
+    return bestPct;
   }
 
   async seedIfEmpty(): Promise<void> {
