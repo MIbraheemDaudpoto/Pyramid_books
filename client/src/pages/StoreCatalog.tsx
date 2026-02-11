@@ -179,7 +179,7 @@ export default function StoreCatalog() {
                         <div className="mt-3">
                           <button
                             className="btn btn-primary pb-sheen w-100 d-flex align-items-center justify-content-center gap-2"
-                            disabled={!book.stockQty || book.stockQty <= 0 || addToCart.isPending}
+                            disabled={addToCart.isPending}
                             onClick={() => handleAdd(book)}
                             data-testid={`add-to-cart-${book.id}`}
                           >
@@ -233,7 +233,7 @@ export default function StoreCatalog() {
                         <div className="mt-3">
                           <button
                             className="btn btn-primary pb-sheen w-100 d-flex align-items-center justify-content-center gap-2"
-                            disabled={!book.stockQty || book.stockQty <= 0 || addToCart.isPending}
+                            disabled={addToCart.isPending}
                             onClick={() => handleAdd(book)}
                             data-testid={`add-to-cart-${book.id}`}
                           >
