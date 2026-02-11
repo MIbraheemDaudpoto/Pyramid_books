@@ -15,6 +15,27 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// ===== Book Categories =====
+export const BOOK_CATEGORIES = [
+  "School Course Books",
+  "Stories",
+  "Novel",
+  "General Books",
+  "Religious",
+  "Science",
+  "Technology",
+  "History",
+  "Poetry",
+  "Reference",
+  "Classics",
+  "Fiction",
+  "Non-Fiction",
+  "Children",
+  "Other",
+] as const;
+
+export type BookCategory = (typeof BOOK_CATEGORIES)[number];
+
 // ===== Sessions table =====
 export const sessions = pgTable(
   "sessions",

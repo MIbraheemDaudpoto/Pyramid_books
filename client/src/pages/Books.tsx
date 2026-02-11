@@ -9,8 +9,9 @@ import { useMe } from "@/hooks/use-me";
 import { useToast } from "@/hooks/use-toast";
 import { redirectToLogin } from "@/lib/auth-utils";
 import type { CreateBookRequest, UpdateBookRequest } from "@shared/schema";
+import { BOOK_CATEGORIES } from "@shared/schema";
 import { BookOpen, Plus, Search, Trash2, Pencil, AlertTriangle, Filter } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { z } from "zod";
 
@@ -49,13 +50,7 @@ export default function BooksPage() {
     if (/^401:/.test(msg)) redirectToLogin(toast);
   }, [error, toast]);
 
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    (data || []).forEach((b) => {
-      if (b.category) set.add(b.category);
-    });
-    return Array.from(set).sort();
-  }, [data]);
+  const categories = BOOK_CATEGORIES;
 
   const createMutation = useCreateBook();
   const updateMutation = useUpdateBook();
@@ -212,7 +207,7 @@ export default function BooksPage() {
               <Filter className="w-4 h-4" />
               Low stock {lowStock ? "On" : "Off"}
             </button>
-            {isAdmin && (
+            {(isAdmin || me?.role === "salesman") && (
               <button className="btn btn-primary pb-sheen d-inline-flex align-items-center gap-2" onClick={openCreate} data-testid="books-create">
                 <Plus className="w-4 h-4" />
                 Add book
@@ -358,9 +353,9 @@ export default function BooksPage() {
                             <button
                               className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2"
                               onClick={() => openEdit(b.id)}
-                              disabled={!isAdmin}
+                              disabled={!isAdmin && me?.role !== "salesman"}
                               data-testid={`books-edit-${b.id}`}
-                              title={isAdmin ? "Edit book" : "Admins only"}
+                              title={(isAdmin || me?.role === "salesman") ? "Edit book" : "Admins only"}
                             >
                               <Pencil className="w-4 h-4" />
                               <span className="d-none d-lg-inline">Edit</span>
@@ -419,7 +414,12 @@ export default function BooksPage() {
 
             <div className="col-12 col-md-6">
               <label className="form-label">Category</label>
-              <input className="form-control" value={form.category ?? ""} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} data-testid="book-form-category" />
+              <select className="form-select" value={form.category ?? ""} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} data-testid="book-form-category">
+                <option value="">Select category</option>
+                {BOOK_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </div>
             <div className="col-12 col-md-3">
               <label className="form-label">Unit price</label>
@@ -478,7 +478,12 @@ export default function BooksPage() {
 
             <div className="col-12 col-md-6">
               <label className="form-label">Category</label>
-              <input className="form-control" value={form.category ?? ""} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} data-testid="book-edit-category" />
+              <select className="form-select" value={form.category ?? ""} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} data-testid="book-edit-category">
+                <option value="">Select category</option>
+                {BOOK_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </div>
             <div className="col-12 col-md-3">
               <label className="form-label">Unit price</label>

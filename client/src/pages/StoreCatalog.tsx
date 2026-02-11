@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { Book } from "@shared/schema";
+import { BOOK_CATEGORIES } from "@shared/schema";
 import { useAddToCart } from "@/hooks/use-cart";
 import { useToast } from "@/hooks/use-toast";
 import GlassCard from "@/components/GlassCard";
@@ -14,7 +15,7 @@ export default function StoreCatalog() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
 
-  const categories = Array.from(new Set(books.map((b) => b.category).filter(Boolean))).sort();
+  const categories = BOOK_CATEGORIES;
 
   const filtered = books.filter((b) => {
     const matchesSearch =
@@ -69,7 +70,7 @@ export default function StoreCatalog() {
             >
               <option value="">All Categories</option>
               {categories.map((c) => (
-                <option key={c} value={c!}>{c}</option>
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
           </div>
@@ -88,7 +89,7 @@ export default function StoreCatalog() {
           <h5 className="text-muted">No books found</h5>
           <p className="text-muted small">Try adjusting your search or filter.</p>
         </GlassCard>
-      ) : (
+      ) : categoryFilter || search ? (
         <div className="row g-3">
           {filtered.map((book) => (
             <div key={book.id} className="col-sm-6 col-lg-4 col-xl-3" data-testid={`book-card-${book.id}`}>
@@ -136,6 +137,117 @@ export default function StoreCatalog() {
               </GlassCard>
             </div>
           ))}
+        </div>
+      ) : (
+        <div>
+          {BOOK_CATEGORIES.map((cat) => {
+            const catBooks = filtered.filter((b) => b.category === cat);
+            if (catBooks.length === 0) return null;
+            return (
+              <div key={cat} className="mb-4" data-testid={`store-category-section-${cat}`}>
+                <h5 className="fw-bold mb-3 d-flex align-items-center gap-2">
+                  <BookOpen style={{ width: 20, height: 20 }} className="text-primary" />
+                  {cat}
+                  <span className="badge bg-primary bg-opacity-10 text-primary small">{catBooks.length}</span>
+                </h5>
+                <div className="row g-3">
+                  {catBooks.map((book) => (
+                    <div key={book.id} className="col-sm-6 col-lg-4 col-xl-3" data-testid={`book-card-${book.id}`}>
+                      <GlassCard className="h-100 d-flex flex-column">
+                        <div className="flex-grow-1">
+                          <h6 className="fw-bold mb-1" data-testid={`book-title-${book.id}`}>{book.title}</h6>
+                          {book.author && (
+                            <p className="text-muted small mb-1" data-testid={`book-author-${book.id}`}>
+                              by {book.author}
+                            </p>
+                          )}
+                          {book.isbn && <p className="text-muted small mb-1">ISBN: {book.isbn}</p>}
+                          {book.publisher && <p className="text-muted small mb-2">Publisher: {book.publisher}</p>}
+                          <div className="d-flex align-items-center justify-content-between gap-2 mt-2">
+                            <span className="fw-bold fs-5 text-primary" data-testid={`book-price-${book.id}`}>
+                              ${Number(book.unitPrice).toFixed(2)}
+                            </span>
+                            {book.stockQty != null && book.stockQty > 0 ? (
+                              <span className="badge bg-success bg-opacity-10 text-success small" data-testid={`book-stock-${book.id}`}>
+                                Available
+                              </span>
+                            ) : (
+                              <span className="badge bg-danger bg-opacity-10 text-danger small">Out of stock</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-3">
+                          <button
+                            className="btn btn-primary pb-sheen w-100 d-flex align-items-center justify-content-center gap-2"
+                            disabled={!book.stockQty || book.stockQty <= 0 || addToCart.isPending}
+                            onClick={() => handleAdd(book)}
+                            data-testid={`add-to-cart-${book.id}`}
+                          >
+                            <ShoppingCart style={{ width: 16, height: 16 }} />
+                            Add to Cart
+                          </button>
+                        </div>
+                      </GlassCard>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          {(() => {
+            const uncategorized = filtered.filter((b) => !b.category || !BOOK_CATEGORIES.includes(b.category as any));
+            if (uncategorized.length === 0) return null;
+            return (
+              <div className="mb-4" data-testid="store-category-section-uncategorized">
+                <h5 className="fw-bold mb-3 d-flex align-items-center gap-2">
+                  <BookOpen style={{ width: 20, height: 20 }} className="text-muted" />
+                  Uncategorized
+                  <span className="badge bg-secondary bg-opacity-10 text-secondary small">{uncategorized.length}</span>
+                </h5>
+                <div className="row g-3">
+                  {uncategorized.map((book) => (
+                    <div key={book.id} className="col-sm-6 col-lg-4 col-xl-3" data-testid={`book-card-${book.id}`}>
+                      <GlassCard className="h-100 d-flex flex-column">
+                        <div className="flex-grow-1">
+                          <h6 className="fw-bold mb-1" data-testid={`book-title-${book.id}`}>{book.title}</h6>
+                          {book.author && (
+                            <p className="text-muted small mb-1" data-testid={`book-author-${book.id}`}>
+                              by {book.author}
+                            </p>
+                          )}
+                          {book.isbn && <p className="text-muted small mb-1">ISBN: {book.isbn}</p>}
+                          {book.publisher && <p className="text-muted small mb-2">Publisher: {book.publisher}</p>}
+                          <div className="d-flex align-items-center justify-content-between gap-2 mt-2">
+                            <span className="fw-bold fs-5 text-primary" data-testid={`book-price-${book.id}`}>
+                              ${Number(book.unitPrice).toFixed(2)}
+                            </span>
+                            {book.stockQty != null && book.stockQty > 0 ? (
+                              <span className="badge bg-success bg-opacity-10 text-success small" data-testid={`book-stock-${book.id}`}>
+                                Available
+                              </span>
+                            ) : (
+                              <span className="badge bg-danger bg-opacity-10 text-danger small">Out of stock</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-3">
+                          <button
+                            className="btn btn-primary pb-sheen w-100 d-flex align-items-center justify-content-center gap-2"
+                            disabled={!book.stockQty || book.stockQty <= 0 || addToCart.isPending}
+                            onClick={() => handleAdd(book)}
+                            data-testid={`add-to-cart-${book.id}`}
+                          >
+                            <ShoppingCart style={{ width: 16, height: 16 }} />
+                            Add to Cart
+                          </button>
+                        </div>
+                      </GlassCard>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
