@@ -1,12 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import type { OrdersListResponse } from "@shared/schema";
+import type { OrdersListResponse, OrderWithItemsResponse } from "@shared/schema";
 import GlassCard from "@/components/GlassCard";
 import SectionHeader from "@/components/SectionHeader";
-import { Receipt, Eye, Package } from "lucide-react";
+import { Eye, Package, Download } from "lucide-react";
+import { generateInvoicePDF } from "@/lib/invoice-pdf";
+import { buildUrl } from "@shared/routes";
 
 export default function StoreOrders() {
   const { data: orders = [], isLoading } = useQuery<OrdersListResponse>({ queryKey: ["/api/orders"] });
+
+  const handleDownloadInvoice = async (orderId: number) => {
+    try {
+      const url = buildUrl("/api/orders/:id", { id: orderId });
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load order");
+      const order: OrderWithItemsResponse = await res.json();
+      await generateInvoicePDF(order);
+    } catch (err) {
+      console.error("Invoice download error:", err);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -80,14 +94,24 @@ export default function StoreOrders() {
                         </span>
                       </td>
                       <td>
-                        <Link
-                          href={`/store/orders/${order.id}`}
-                          className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
-                          data-testid={`view-order-${order.id}`}
-                        >
-                          <Eye style={{ width: 14, height: 14 }} />
-                          View
-                        </Link>
+                        <div className="d-flex flex-wrap gap-1">
+                          <Link
+                            href={`/store/orders/${order.id}`}
+                            className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                            data-testid={`view-order-${order.id}`}
+                          >
+                            <Eye style={{ width: 14, height: 14 }} />
+                            View
+                          </Link>
+                          <button
+                            className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                            onClick={() => handleDownloadInvoice(order.id)}
+                            data-testid={`download-invoice-${order.id}`}
+                          >
+                            <Download style={{ width: 14, height: 14 }} />
+                            Invoice
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
