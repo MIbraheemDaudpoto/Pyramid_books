@@ -27,6 +27,7 @@ import {
   type OrderWithItemsResponse,
   type OrdersListResponse,
   type PasswordResetToken,
+  type AnalyticsResponse,
   type PaymentsListResponse,
   type ReportResponse,
   type Role,
@@ -91,6 +92,7 @@ export interface IStorage {
   listStockReceipts(): Promise<StockReceiptsListResponse>;
   createStockReceipt(userId: string, input: CreateStockReceiptRequest): Promise<StockReceiptWithItems>;
   getReports(from?: string, to?: string): Promise<ReportResponse>;
+  getAnalytics(period: "daily" | "weekly" | "monthly", userId: string): Promise<AnalyticsResponse>;
 
   listCartItems(userId: string): Promise<CartResponse>;
   addToCart(userId: string, bookId: number, qty: number): Promise<CartResponse>;
@@ -1048,6 +1050,147 @@ export class DatabaseStorage implements IStorage {
       outstandingBalances,
       salesmanPerformance,
     };
+  }
+
+  async getAnalytics(period: "daily" | "weekly" | "monthly", userId: string): Promise<AnalyticsResponse> {
+    const me = await this.getCurrentUser(userId);
+    const isSalesman = me?.role === "salesman";
+
+    let dateFormat: string;
+    let intervals: number;
+    if (period === "daily") {
+      dateFormat = "YYYY-MM-DD";
+      intervals = 30;
+    } else if (period === "weekly") {
+      dateFormat = "IYYY-\"W\"IW";
+      intervals = 12;
+    } else {
+      dateFormat = "YYYY-MM";
+      intervals = 12;
+    }
+
+    const cutoff = new Date();
+    if (period === "daily") cutoff.setDate(cutoff.getDate() - intervals);
+    else if (period === "weekly") cutoff.setDate(cutoff.getDate() - intervals * 7);
+    else cutoff.setMonth(cutoff.getMonth() - intervals);
+
+    const orderFilters: any[] = [gte(orders.orderDate, cutoff)];
+    if (isSalesman) {
+      const assignedCustomers = await db.select({ id: customers.id }).from(customers).where(eq(customers.salesmanUserId, userId));
+      const ids = assignedCustomers.map(c => c.id);
+      if (ids.length > 0) {
+        orderFilters.push(inArray(orders.customerId, ids));
+      } else {
+        orderFilters.push(sql`false`);
+      }
+    }
+
+    const salesRows = await db
+      .select({
+        label: sql<string>`to_char(${orders.orderDate}, ${dateFormat})`,
+        orderCount: sql<number>`count(*)`,
+        orderRevenue: sql<number>`coalesce(sum(${orders.total}), 0)`,
+        itemsSold: sql<number>`coalesce(sum((select sum(oi.qty) from order_items oi where oi.order_id = ${orders.id})), 0)`,
+      })
+      .from(orders)
+      .where(and(...orderFilters))
+      .groupBy(sql`to_char(${orders.orderDate}, ${dateFormat})`)
+      .orderBy(sql`to_char(${orders.orderDate}, ${dateFormat})`);
+
+    const stockFilters: any[] = [gte(stockReceipts.receivedAt, cutoff)];
+    if (isSalesman) {
+      stockFilters.push(eq(stockReceipts.receivedByUserId, userId));
+    }
+
+    const stockRows = await db
+      .select({
+        label: sql<string>`to_char(${stockReceipts.receivedAt}, ${dateFormat})`,
+        stockReceived: sql<number>`coalesce(sum(sri.qty), 0)`,
+        stockCost: sql<number>`coalesce(sum(sri.qty * sri.buying_price), 0)`,
+      })
+      .from(stockReceipts)
+      .innerJoin(sql`stock_receipt_items sri`, sql`sri.receipt_id = ${stockReceipts.id}`)
+      .where(and(...stockFilters))
+      .groupBy(sql`to_char(${stockReceipts.receivedAt}, ${dateFormat})`)
+      .orderBy(sql`to_char(${stockReceipts.receivedAt}, ${dateFormat})`);
+
+    const salesMap = new Map(salesRows.map(r => [r.label, r]));
+    const stockMap = new Map(stockRows.map(r => [r.label, r]));
+    const allLabels = [...new Set([...salesMap.keys(), ...stockMap.keys()])].sort();
+
+    const rows = allLabels.map(label => {
+      const s = salesMap.get(label);
+      const st = stockMap.get(label);
+      return {
+        label,
+        orderCount: Number(s?.orderCount ?? 0),
+        orderRevenue: Number(s?.orderRevenue ?? 0),
+        itemsSold: Number(s?.itemsSold ?? 0),
+        stockReceived: Number(st?.stockReceived ?? 0),
+        stockCost: Number(st?.stockCost ?? 0),
+      };
+    });
+
+    const totals = rows.reduce(
+      (acc, r) => ({
+        orderCount: acc.orderCount + r.orderCount,
+        orderRevenue: acc.orderRevenue + r.orderRevenue,
+        itemsSold: acc.itemsSold + r.itemsSold,
+        stockReceived: acc.stockReceived + r.stockReceived,
+        stockCost: acc.stockCost + r.stockCost,
+      }),
+      { orderCount: 0, orderRevenue: 0, itemsSold: 0, stockReceived: 0, stockCost: 0 },
+    );
+
+    let topSellingQuery = db
+      .select({
+        bookId: orderItems.bookId,
+        title: books.title,
+        qtySold: sql<number>`coalesce(sum(${orderItems.qty}), 0)`,
+        revenue: sql<number>`coalesce(sum(${orderItems.lineTotal}), 0)`,
+      })
+      .from(orderItems)
+      .innerJoin(books, eq(books.id, orderItems.bookId))
+      .innerJoin(orders, eq(orders.id, orderItems.orderId))
+      .where(and(...orderFilters));
+
+    const topSellingRows = await (topSellingQuery as any)
+      .groupBy(orderItems.bookId, books.title)
+      .orderBy(sql`sum(${orderItems.qty}) desc`)
+      .limit(10);
+
+    const topSellingBooks = (topSellingRows as any[]).map(r => ({
+      bookId: r.bookId,
+      title: r.title,
+      qtySold: Number(r.qtySold),
+      revenue: Number(r.revenue),
+    }));
+
+    const topBoughtQuery = db
+      .select({
+        bookId: sql<number>`sri.book_id`,
+        title: books.title,
+        qtyReceived: sql<number>`coalesce(sum(sri.qty), 0)`,
+        cost: sql<number>`coalesce(sum(sri.qty * sri.buying_price), 0)`,
+      })
+      .from(stockReceipts)
+      .innerJoin(sql`stock_receipt_items sri`, sql`sri.receipt_id = ${stockReceipts.id}`)
+      .innerJoin(books, sql`${books.id} = sri.book_id`)
+      .where(and(...stockFilters));
+
+    const topBoughtRows = await (topBoughtQuery as any)
+      .groupBy(sql`sri.book_id`, books.title)
+      .orderBy(sql`sum(sri.qty) desc`)
+      .limit(10);
+
+    const topBoughtBooks = (topBoughtRows as any[]).map(r => ({
+      bookId: Number(r.bookId),
+      title: r.title,
+      qtyReceived: Number(r.qtyReceived),
+      cost: Number(r.cost),
+    }));
+
+    return { period, rows, totals, topSellingBooks, topBoughtBooks };
   }
 
   async getDashboard(userId: string): Promise<DashboardResponse> {

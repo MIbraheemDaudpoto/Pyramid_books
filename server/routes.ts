@@ -878,6 +878,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // Analytics
+  app.get(api.analytics.get.path, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const me = await storage.getCurrentUser(userId);
+      if (!me) return res.status(401).json({ message: "Unauthorized" });
+      if (me.role !== "admin" && me.role !== "salesman") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const params = api.analytics.get.input?.parse(req.query);
+      const data = await storage.getAnalytics(params?.period || "monthly", userId);
+      res.json(data);
+    } catch (err: any) {
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
   // Cart
   app.get(api.cart.list.path, isAuthenticated, async (req: any, res) => {
     try {

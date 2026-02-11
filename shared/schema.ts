@@ -550,3 +550,26 @@ export interface SchoolListWithItems extends SchoolList {
 }
 
 export type SchoolListsResponse = SchoolListWithItems[];
+
+export interface AnalyticsPeriodRow {
+  label: string;
+  orderCount: number;
+  orderRevenue: number;
+  itemsSold: number;
+  stockReceived: number;
+  stockCost: number;
+}
+
+export interface AnalyticsResponse {
+  period: "daily" | "weekly" | "monthly";
+  rows: AnalyticsPeriodRow[];
+  totals: {
+    orderCount: number;
+    orderRevenue: number;
+    itemsSold: number;
+    stockReceived: number;
+    stockCost: number;
+  };
+  topSellingBooks: Array<{ bookId: number; title: string; qtySold: number; revenue: number }>;
+  topBoughtBooks: Array<{ bookId: number; title: string; qtyReceived: number; cost: number }>;
+}

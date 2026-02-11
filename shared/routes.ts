@@ -3,6 +3,7 @@ import {
   insertBookSchema,
   insertCustomerSchema,
   roles,
+  type AnalyticsResponse,
   type Book,
   type CartResponse,
   type Customer,
@@ -394,6 +395,21 @@ export const api = {
       responses: {
         200: z.custom<ReportResponse>(),
         401: errorSchemas.unauthorized,
+      },
+    },
+  },
+
+  analytics: {
+    get: {
+      method: "GET" as const,
+      path: "/api/analytics",
+      input: z.object({
+        period: z.enum(["daily", "weekly", "monthly"]).default("monthly"),
+      }).optional(),
+      responses: {
+        200: z.custom<AnalyticsResponse>(),
+        401: errorSchemas.unauthorized,
+        403: errorSchemas.forbidden,
       },
     },
   },
