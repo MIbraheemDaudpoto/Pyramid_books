@@ -310,6 +310,27 @@ export const schoolListItems = pgTable(
   ],
 );
 
+// ===== Password Reset Tokens =====
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    token: varchar("token", { length: 128 }).notNull().unique(),
+    expiresAt: timestamp("expires_at").notNull(),
+    used: boolean("used").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("IDX_password_reset_tokens_token").on(table.token),
+    index("IDX_password_reset_tokens_user").on(table.userId),
+  ],
+);
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
 // ===== Insert schemas =====
 export const insertCustomerSchema = createInsertSchema(customers).omit({
   id: true,
