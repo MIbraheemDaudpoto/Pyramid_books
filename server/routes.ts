@@ -215,7 +215,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const userId = getUserId(req);
       const me = await storage.getCurrentUser(userId);
-      if (!me || me.role !== "admin") {
+      if (!me || (me.role !== "admin" && me.role !== "salesman")) {
         return res.status(403).json({ message: "Forbidden" });
       }
       const input = api.customers.create.input.parse(req.body);
@@ -237,7 +237,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const userId = getUserId(req);
       const me = await storage.getCurrentUser(userId);
-      if (!me || me.role !== "admin") {
+      if (!me || (me.role !== "admin" && me.role !== "salesman")) {
         return res.status(403).json({ message: "Forbidden" });
       }
       const input = api.customers.update.input.parse(req.body);
