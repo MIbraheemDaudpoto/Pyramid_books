@@ -219,6 +219,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(403).json({ message: "Forbidden" });
       }
       const input = api.customers.create.input.parse(req.body);
+      if (me.role === "salesman" && !input.assignedSalesmanUserId) {
+        input.assignedSalesmanUserId = userId;
+      }
       const created = await storage.createCustomer(input);
       res.status(201).json(created);
     } catch (err: any) {
