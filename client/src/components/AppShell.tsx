@@ -54,7 +54,7 @@ export default function AppShell(props: { children: React.ReactNode }) {
       { href: "/customers", label: "Customers", icon: Users, testId: "nav-customers", show: !!me },
       { href: "/orders", label: "Orders", icon: Receipt, testId: "nav-orders", show: !!me },
       { href: "/payments", label: "Payments", icon: CreditCard, testId: "nav-payments", show: !!me },
-      { href: "/stock", label: "Stock Receipts", icon: Package, testId: "nav-stock", show: r === "admin" || r === "salesman" },
+      { href: "/stock", label: "Received Stock", icon: Package, testId: "nav-stock", show: r === "admin" || r === "salesman" },
       { href: "/reports", label: "Reports", icon: BarChart3, testId: "nav-reports", show: r === "admin" || r === "salesman" },
       { href: "/csv", label: "Import / Export", icon: FileSpreadsheet, testId: "nav-csv", show: r === "admin" || r === "salesman" },
       { href: "/discounts", label: "Discounts", icon: Percent, testId: "nav-discounts", show: r === "admin" },

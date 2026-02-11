@@ -78,7 +78,7 @@ export default function StockReceiptsPage() {
         items: validItems,
         notes: notes.trim() || undefined,
       });
-      toast({ title: "Stock receipt created" });
+      toast({ title: "Received stock recorded" });
       setCreateOpen(false);
       resetForm();
     } catch (err: any) {
@@ -90,9 +90,9 @@ export default function StockReceiptsPage() {
 
   return (
     <AppShell>
-      <Seo title="Stock Receipts | Pyramid Books" />
+      <Seo title="Received Stock | Pyramid Books" />
       <SectionHeader
-        title="Stock Receipts"
+        title="Received Stock"
         subtitle="Track inventory received from publishers"
         testId="header-stock-receipts"
         right={
@@ -118,7 +118,7 @@ export default function StockReceiptsPage() {
         ) : !receipts || receipts.length === 0 ? (
           <div className="text-center py-5 text-muted" data-testid="empty-stock-receipts">
             <Package className="mx-auto mb-3" style={{ width: 48, height: 48, opacity: 0.4 }} />
-            <div>No stock receipts yet</div>
+            <div>No received stock yet</div>
           </div>
         ) : (
           <div className="table-responsive">
@@ -161,7 +161,7 @@ export default function StockReceiptsPage() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-lg" style={{ maxWidth: 600 }}>
           <DialogHeader>
-            <DialogTitle>New Stock Receipt</DialogTitle>
+            <DialogTitle>New Received Stock</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate} data-testid="stock-receipt-form">
             <div className="mb-3">

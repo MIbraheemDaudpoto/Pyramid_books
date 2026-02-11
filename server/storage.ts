@@ -709,6 +709,13 @@ export class DatabaseStorage implements IStorage {
 
     if (me.role === "customer") {
       customerFilterIds = me.customerId ? [me.customerId] : [];
+    } else if (me.role === "salesman") {
+      const assignedCustomers = await db
+        .select({ id: customers.id })
+        .from(customers)
+        .where(eq(customers.assignedSalesmanUserId, me.id));
+      customerFilterIds = assignedCustomers.map((c) => c.id);
+      if (customerFilterIds.length === 0) customerFilterIds = [-1];
     }
 
     const q = db

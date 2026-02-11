@@ -176,7 +176,7 @@ export default function CsvImportExportPage() {
             <GlassCard testId="card-csv-stock">
               <div className="d-flex align-items-center gap-2 mb-4">
                 <FileSpreadsheet className="text-primary" style={{ width: 22, height: 22 }} />
-                <h5 className="mb-0">Stock Receipts</h5>
+                <h5 className="mb-0">Received Stock</h5>
               </div>
               <div>
                 <div className="fw-semibold small mb-2">Export</div>
