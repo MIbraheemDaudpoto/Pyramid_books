@@ -154,3 +154,5 @@ users, customers, books, orders, order_items, payments, stock_receipts, stock_re
 - Salesman can edit/delete items and update status on assigned customer orders
 - Added "finalized" order status — salesman/admin can finalize invoices with dedicated button
 - Customer orders list has direct Invoice download button
+- Salesman payment visibility: salesmen see payments from assigned customers (not all payments)
+- Renamed "Stock Receipts" to "Received Stock" throughout UI (sidebar, page title, empty state, dialog, CSV section)
