@@ -135,3 +135,11 @@ users, customers, books, orders, order_items, payments, stock_receipts, stock_re
 - Stock quantity hidden from customers (shows "Available"/"Out of stock" instead of numbers)
 - API strips stockQty, buyingPrice, reorderLevel from books response for customer role
 - Note: No email service configured (Resend dismissed). Password resets are admin-assisted (admin copies reset link to share with user)
+- Added predefined book categories (15 categories) with dropdown selects replacing free-text input
+- Salesman can create/edit books, customers auto-assign to creating salesman, CSV import/export enabled
+- Added cart disclaimer: "Discount is given by only Company so this is not final bill" on shopping cart
+- Added PDF invoice generation (jspdf + jspdf-autotable) with Pyramid Books logo and branding
+- Invoice includes: company header with logo, customer billing info, line items table, per-book discount, totals, disclaimer footer
+- Created StoreOrderDetail page for customer order detail view with Download Invoice button
+- Added Download Invoice button to admin OrderDetail page
+- Invoice file: client/src/lib/invoice-pdf.ts, Logo: attached_assets/pyramid-books-logo.png
