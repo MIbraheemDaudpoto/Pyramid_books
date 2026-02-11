@@ -543,6 +543,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.send("name,customerType,phone,email,address,creditLimit,notes\n");
   });
 
+  app.get(api.csv.templateStock.path, isAuthenticated, async (_req: any, res) => {
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=stock_receipts_template.csv");
+    res.send("publisher,bookTitle,qty,notes\n");
+  });
+
   app.get(api.csv.exportBooks.path, isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
@@ -750,6 +756,95 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.setHeader("Content-Type", "text/csv");
       res.setHeader("Content-Disposition", "attachment; filename=stock-receipts.csv");
       res.send(csv);
+    } catch (err: any) {
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.post(api.csv.importStock.path, textParser, isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const me = await storage.getCurrentUser(userId);
+      if (!me || (me.role !== "admin" && me.role !== "salesman")) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const csvText = typeof req.body === "string" ? req.body : req.body?.csv;
+      if (!csvText || typeof csvText !== "string") {
+        return res.status(400).json({ message: "CSV data required" });
+      }
+
+      const rows = parseCsv(csvText);
+      if (rows.length < 2) {
+        return res.status(400).json({ message: "CSV must have a header row and at least one data row" });
+      }
+
+      const headers = rows[0].map((h) => h.trim().toLowerCase());
+      const grouped: Record<string, { items: Array<{ bookTitle: string; qty: number }>; notes: string }> = {};
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (row.length === 0 || (row.length === 1 && row[0].trim() === "")) continue;
+        const obj: any = {};
+        headers.forEach((h, idx) => {
+          obj[h] = row[idx]?.trim() ?? "";
+        });
+
+        const publisher = obj.publisher || "Unknown";
+        const bookTitle = obj.booktitle || obj.book_title || obj.title || "";
+        const qty = parseInt(obj.qty || obj.quantity || "1", 10) || 1;
+        const notes = obj.notes || "";
+
+        if (!bookTitle) continue;
+
+        if (!grouped[publisher]) {
+          grouped[publisher] = { items: [], notes: "" };
+        }
+        if (notes && !grouped[publisher].notes.includes(notes)) {
+          grouped[publisher].notes = grouped[publisher].notes
+            ? `${grouped[publisher].notes}; ${notes}`
+            : notes;
+        }
+        grouped[publisher].items.push({ bookTitle, qty });
+      }
+
+      let totalReceipts = 0;
+      let totalItems = 0;
+      const errors: string[] = [];
+
+      const allBooks = await storage.listBooks();
+
+      for (const [publisher, data] of Object.entries(grouped)) {
+        const receiptItems: Array<{ bookId: number; qty: number }> = [];
+
+        for (const item of data.items) {
+          const match = allBooks.find(
+            (b) => b.title.toLowerCase() === item.bookTitle.toLowerCase()
+          );
+          if (!match) {
+            errors.push(`Book not found: "${item.bookTitle}"`);
+            continue;
+          }
+          receiptItems.push({ bookId: match.id, qty: item.qty });
+          totalItems++;
+        }
+
+        if (receiptItems.length > 0) {
+          await storage.createStockReceipt(userId, {
+            publisher,
+            items: receiptItems,
+            notes: data.notes || undefined,
+          });
+          totalReceipts++;
+        }
+      }
+
+      res.json({
+        count: totalItems,
+        receipts: totalReceipts,
+        errors: errors.length > 0 ? errors : undefined,
+      });
     } catch (err: any) {
       const status = asStatus(err);
       res.status(status).json({ message: err.message || "Error" });

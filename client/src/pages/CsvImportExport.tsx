@@ -23,6 +23,7 @@ export default function CsvImportExportPage() {
 
   const booksFileRef = useRef<HTMLInputElement>(null);
   const customersFileRef = useRef<HTMLInputElement>(null);
+  const stockFileRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState<string | null>(null);
 
   async function downloadFile(url: string, filename: string) {
@@ -61,7 +62,9 @@ export default function CsvImportExportPage() {
         }
       }
       const result = await res.json();
-      toast({ title: `Imported ${result.count || 0} ${label}` });
+      const errCount = result.errors?.length || 0;
+      const desc = errCount > 0 ? `${errCount} item(s) skipped: ${result.errors.slice(0, 3).join("; ")}${errCount > 3 ? "..." : ""}` : undefined;
+      toast({ title: `Imported ${result.count || 0} ${label}`, description: desc, variant: errCount > 0 ? "destructive" : undefined });
       queryClient.invalidateQueries({ predicate: () => true });
     } catch (err: any) {
       toast({ title: err.message || "Import failed", variant: "destructive" });
@@ -178,17 +181,58 @@ export default function CsvImportExportPage() {
                 <FileSpreadsheet className="text-primary" style={{ width: 22, height: 22 }} />
                 <h5 className="mb-0">Received Stock</h5>
               </div>
-              <div>
-                <div className="fw-semibold small mb-2">Export</div>
-                <button
-                  type="button"
-                  className="btn btn-outline-primary d-inline-flex align-items-center gap-2"
-                  onClick={() => downloadFile("/api/csv/stock-receipts", "stock_receipts.csv")}
-                  data-testid="button-export-stock"
-                >
-                  <Download style={{ width: 16, height: 16 }} />
-                  Download CSV
-                </button>
+
+              <div className="d-flex flex-column gap-3">
+                <div>
+                  <div className="fw-semibold small mb-2">Export</div>
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary d-inline-flex align-items-center gap-2"
+                    onClick={() => downloadFile("/api/csv/stock-receipts", "stock_receipts.csv")}
+                    data-testid="button-export-stock"
+                  >
+                    <Download style={{ width: 16, height: 16 }} />
+                    Download CSV
+                  </button>
+                </div>
+
+                <hr className="my-1" />
+
+                <div>
+                  <div className="fw-semibold small mb-2">Import</div>
+                  <div className="d-flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1"
+                      onClick={() => downloadFile("/api/csv/template/stock-receipts", "stock_receipts_template.csv")}
+                      data-testid="button-template-stock"
+                    >
+                      <Download style={{ width: 14, height: 14 }} />
+                      Template
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary d-inline-flex align-items-center gap-2"
+                      onClick={() => stockFileRef.current?.click()}
+                      disabled={importing === "Received Stock"}
+                      data-testid="button-import-stock"
+                    >
+                      <Upload style={{ width: 16, height: 16 }} />
+                      {importing === "Received Stock" ? "Importing..." : "Upload CSV"}
+                    </button>
+                    <input
+                      ref={stockFileRef}
+                      type="file"
+                      accept=".csv"
+                      className="d-none"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) uploadFile("/api/csv/stock-receipts", file, "Received Stock");
+                        e.target.value = "";
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             </GlassCard>
           </div>

@@ -363,6 +363,10 @@ export const api = {
       method: "GET" as const,
       path: "/api/csv/stock-receipts",
     },
+    importStock: {
+      method: "POST" as const,
+      path: "/api/csv/stock-receipts",
+    },
     templateBooks: {
       method: "GET" as const,
       path: "/api/csv/template/books",
@@ -370,6 +374,10 @@ export const api = {
     templateCustomers: {
       method: "GET" as const,
       path: "/api/csv/template/customers",
+    },
+    templateStock: {
+      method: "GET" as const,
+      path: "/api/csv/template/stock-receipts",
     },
   },
 
