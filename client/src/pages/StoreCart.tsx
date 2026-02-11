@@ -137,6 +137,11 @@ export default function StoreCart() {
                 <span className="fw-bold fs-5 text-primary" data-testid="cart-total">${subtotal.toFixed(2)}</span>
               </div>
 
+              <div className="alert alert-info small mb-3 d-flex align-items-start gap-2" role="alert" data-testid="cart-discount-disclaimer">
+                <i className="bi bi-info-circle-fill mt-1 flex-shrink-0"></i>
+                <span>Discount is given by only Company, so this is not the final bill. Final pricing will be confirmed after order review.</span>
+              </div>
+
               <div className="mb-3">
                 <label className="form-label small text-muted">Order Notes (optional)</label>
                 <textarea

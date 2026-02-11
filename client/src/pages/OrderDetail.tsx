@@ -5,7 +5,8 @@ import Seo from "@/components/Seo";
 import { useOrder, useUpdateOrderStatus } from "@/hooks/use-orders";
 import { useToast } from "@/hooks/use-toast";
 import { redirectToLogin } from "@/lib/auth-utils";
-import { ArrowLeft, PackageCheck, PackageSearch, Truck, XCircle, ClipboardCheck, Receipt } from "lucide-react";
+import { ArrowLeft, PackageCheck, PackageSearch, Truck, XCircle, ClipboardCheck, Receipt, Download } from "lucide-react";
+import { generateInvoicePDF } from "@/lib/invoice-pdf";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 
@@ -84,15 +85,25 @@ export default function OrderDetailPage() {
               Back
             </button>
             {data && (
-              <button
-                className="btn btn-primary pb-sheen d-inline-flex align-items-center gap-2"
-                onClick={() => setStatus(nextStatus)}
-                disabled={statusMutation.isPending}
-                data-testid="order-status-apply"
-              >
-                <ClipboardCheck className="w-4 h-4" />
-                {statusMutation.isPending ? "Updating…" : `Set ${nextStatus}`}
-              </button>
+              <>
+                <button
+                  className="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
+                  onClick={() => generateInvoicePDF(data)}
+                  data-testid="download-invoice-btn"
+                >
+                  <Download className="w-4 h-4" />
+                  Invoice
+                </button>
+                <button
+                  className="btn btn-primary pb-sheen d-inline-flex align-items-center gap-2"
+                  onClick={() => setStatus(nextStatus)}
+                  disabled={statusMutation.isPending}
+                  data-testid="order-status-apply"
+                >
+                  <ClipboardCheck className="w-4 h-4" />
+                  {statusMutation.isPending ? "Updating…" : `Set ${nextStatus}`}
+                </button>
+              </>
             )}
           </div>
         }

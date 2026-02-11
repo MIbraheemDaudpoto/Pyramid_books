@@ -29,6 +29,7 @@ import StoreOrders from "@/pages/StoreOrders";
 import StorePayments from "@/pages/StorePayments";
 import StoreProfile from "@/pages/StoreProfile";
 import StoreSchoolLists from "@/pages/StoreSchoolLists";
+import StoreOrderDetail from "@/pages/StoreOrderDetail";
 import { useMe } from "@/hooks/use-me";
 
 function HomeGate() {
@@ -97,7 +98,7 @@ function CustomerRoutes() {
           <Route path="/store" component={StoreCatalog} />
           <Route path="/store/cart" component={StoreCart} />
           <Route path="/store/orders" component={StoreOrders} />
-          <Route path="/store/orders/:id" component={OrderDetail} />
+          <Route path="/store/orders/:id" component={StoreOrderDetail} />
           <Route path="/store/payments" component={StorePayments} />
           <Route path="/store/profile" component={StoreProfile} />
           <Route path="/store/school-lists" component={StoreSchoolLists} />
