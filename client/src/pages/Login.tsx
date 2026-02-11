@@ -116,7 +116,13 @@ export default function Login() {
             </button>
           </form>
 
-          <p className="text-center text-muted small mt-4 mb-0">
+          <div className="text-center mt-3">
+            <Link href="/forgot-password" className="text-decoration-none small fw-medium" style={{ color: "hsl(var(--primary))" }} data-testid="link-forgot-password">
+              Forgot your password?
+            </Link>
+          </div>
+
+          <p className="text-center text-muted small mt-3 mb-0">
             Don't have an account?{" "}
             <Link href="/signup" className="text-decoration-none fw-medium" style={{ color: "hsl(var(--primary))" }} data-testid="link-signup">
               Create one

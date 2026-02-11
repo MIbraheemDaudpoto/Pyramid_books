@@ -43,8 +43,10 @@ client/src/
     EmptyState.tsx  – Empty state component
   pages/
     Landing.tsx     – Public landing page with auth links
-    Login.tsx       – Login page (email/password)
+    Login.tsx       – Login page (email/password) with "Forgot password?" link
     Signup.tsx      – Registration page (name, email, phone, password with strength meter)
+    ForgotPassword.tsx – Forgot password request page (email form)
+    ResetPassword.tsx – Reset password page (token from URL, new password form)
     Dashboard.tsx   – Main dashboard with KPIs
     Books.tsx       – Book management (CRUD)
     Customers.tsx   – Customer management (CRUD)
@@ -102,20 +104,20 @@ client/src/
 ## Role-Based Routing
 - Admin/Salesman users: `/` redirects to Dashboard with admin sidebar layout (AppShell)
 - Customer users: `/` redirects to `/store` with customer top-navbar layout (CustomerLayout)
-- Public routes: `/landing`, `/login`, `/signup`
+- Public routes: `/landing`, `/login`, `/signup`, `/forgot-password`, `/reset-password`
 - Store routes: `/store`, `/store/cart`, `/store/orders`, `/store/payments`, `/store/profile`, `/store/school-lists`
 - Admin routes: `/dashboard`, `/books`, `/customers`, `/orders`, `/payments`, `/stock`, `/reports`, `/csv`, `/discounts`, `/users`
 
 ## API Endpoints
-- Auth: POST /api/auth/register, POST /api/auth/login, POST /api/auth/logout
+- Auth: POST /api/auth/register, POST /api/auth/login, POST /api/auth/logout, POST /api/auth/forgot-password, POST /api/auth/reset-password
 - Profile: GET /api/me, PATCH /api/profile, PATCH /api/profile/password
-- Admin: POST /api/admin/users (create user accounts)
+- Admin: POST /api/admin/users (create user accounts), GET /api/admin/password-resets (pending reset requests)
 - School Lists: GET/POST /api/school-lists, PATCH/DELETE /api/school-lists/:id
 - School List Items: POST /api/school-lists/:id/items, PATCH/DELETE /api/school-lists/:listId/items/:itemId
 - Add to Cart: POST /api/school-lists/:id/add-to-cart
 
 ## Database Tables
-users, customers, books, orders, order_items, payments, stock_receipts, stock_receipt_items, shopping_cart, discount_rules, school_lists, school_list_items, session
+users, customers, books, orders, order_items, payments, stock_receipts, stock_receipt_items, shopping_cart, discount_rules, school_lists, school_list_items, password_reset_tokens, session
 
 ## Recent Changes (Feb 2026)
 - Replaced Replit OIDC with custom email/password authentication
@@ -127,3 +129,9 @@ users, customers, books, orders, order_items, payments, stock_receipts, stock_re
 - Added profileType, companyName, taxNumber, address fields to users table
 - Added school_lists and school_list_items tables
 - Removed fixed_customer_users table
+- Added forgot password / reset password flow (admin-assisted, no email service)
+- Admin can view pending password reset requests on Users page and copy reset links
+- Password reset tokens stored in password_reset_tokens table (1-hour expiry, single-use)
+- Stock quantity hidden from customers (shows "Available"/"Out of stock" instead of numbers)
+- API strips stockQty, buyingPrice, reorderLevel from books response for customer role
+- Note: No email service configured (Resend dismissed). Password resets are admin-assisted (admin copies reset link to share with user)

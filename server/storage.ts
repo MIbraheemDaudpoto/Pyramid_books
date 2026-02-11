@@ -5,6 +5,7 @@ import {
   discountRules,
   orderItems,
   orders,
+  passwordResetTokens,
   payments,
   schoolLists,
   schoolListItems,
@@ -25,6 +26,7 @@ import {
   type DiscountRule,
   type OrderWithItemsResponse,
   type OrdersListResponse,
+  type PasswordResetToken,
   type PaymentsListResponse,
   type ReportResponse,
   type Role,
@@ -33,6 +35,7 @@ import {
   type UpdateBookRequest,
   type UpdateCustomerRequest,
   type UpdateOrderStatusRequest,
+  type User,
 } from "@shared/schema";
 import { db } from "./db";
 
@@ -121,6 +124,11 @@ export interface IStorage {
   }): Promise<CurrentUserResponse>;
   getUserWithPassword(userId: string): Promise<{ passwordHash: string | null } | null>;
   updatePassword(userId: string, hash: string): Promise<void>;
+
+  createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<(PasswordResetToken & { userEmail: string | null }) | null>;
+  markTokenUsed(tokenId: number): Promise<void>;
+  listPendingPasswordResets(): Promise<Array<{ id: number; token: string; userEmail: string | null; userName: string | null; expiresAt: Date; createdAt: Date }>>;
 
   seedIfEmpty(): Promise<void>;
 }
@@ -1269,6 +1277,57 @@ export class DatabaseStorage implements IStorage {
 
   async updatePassword(userId: string, hash: string): Promise<void> {
     await db.update(users).set({ passwordHash: hash, updatedAt: new Date() }).where(eq(users.id, userId));
+  }
+
+  async createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<PasswordResetToken> {
+    const [row] = await db.insert(passwordResetTokens).values({ userId, token, expiresAt }).returning();
+    return row;
+  }
+
+  async getPasswordResetToken(token: string): Promise<(PasswordResetToken & { userEmail: string | null }) | null> {
+    const [row] = await db
+      .select({
+        id: passwordResetTokens.id,
+        userId: passwordResetTokens.userId,
+        token: passwordResetTokens.token,
+        expiresAt: passwordResetTokens.expiresAt,
+        used: passwordResetTokens.used,
+        createdAt: passwordResetTokens.createdAt,
+        userEmail: users.email,
+      })
+      .from(passwordResetTokens)
+      .innerJoin(users, eq(users.id, passwordResetTokens.userId))
+      .where(eq(passwordResetTokens.token, token));
+    return row || null;
+  }
+
+  async markTokenUsed(tokenId: number): Promise<void> {
+    await db.update(passwordResetTokens).set({ used: true }).where(eq(passwordResetTokens.id, tokenId));
+  }
+
+  async listPendingPasswordResets(): Promise<Array<{ id: number; token: string; userEmail: string | null; userName: string | null; expiresAt: Date; createdAt: Date }>> {
+    const rows = await db
+      .select({
+        id: passwordResetTokens.id,
+        token: passwordResetTokens.token,
+        userEmail: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        expiresAt: passwordResetTokens.expiresAt,
+        createdAt: passwordResetTokens.createdAt,
+      })
+      .from(passwordResetTokens)
+      .innerJoin(users, eq(users.id, passwordResetTokens.userId))
+      .where(and(eq(passwordResetTokens.used, false), gte(passwordResetTokens.expiresAt, new Date())))
+      .orderBy(desc(passwordResetTokens.createdAt));
+    return rows.map((r) => ({
+      id: r.id,
+      token: r.token,
+      userEmail: r.userEmail,
+      userName: [r.firstName, r.lastName].filter(Boolean).join(" ") || null,
+      expiresAt: r.expiresAt,
+      createdAt: r.createdAt,
+    }));
   }
 
   private async getSchoolListWithItems(listId: number): Promise<any> {

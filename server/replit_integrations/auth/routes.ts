@@ -1,7 +1,9 @@
 import type { Express } from "express";
 import { isAuthenticated } from "./replitAuth";
 import { authStorage } from "./storage";
+import { storage } from "../../storage";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { z } from "zod";
 
 const registerSchema = z.object({
@@ -106,6 +108,63 @@ export function registerAuthRoutes(app: Express): void {
       res.clearCookie("connect.sid");
       return res.json({ message: "Logged out" });
     });
+  });
+
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const schema = z.object({ email: z.string().email("Valid email required") });
+      const { email } = schema.parse(req.body);
+
+      const user = await authStorage.getUserByEmail(email);
+      if (!user) {
+        return res.json({ message: "If an account with that email exists, a password reset request has been submitted. Please contact your administrator for the reset link." });
+      }
+
+      const token = crypto.randomBytes(48).toString("hex");
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+      await storage.createPasswordResetToken(user.id, token, expiresAt);
+
+      return res.json({ message: "If an account with that email exists, a password reset request has been submitted. Please contact your administrator for the reset link." });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      console.error("Forgot password error:", err);
+      return res.status(500).json({ message: "Request failed" });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const schema = z.object({
+        token: z.string().min(1, "Token is required"),
+        password: z.string().min(6, "Password must be at least 6 characters"),
+      });
+      const { token, password } = schema.parse(req.body);
+
+      const resetToken = await storage.getPasswordResetToken(token);
+      if (!resetToken) {
+        return res.status(400).json({ message: "Invalid or expired reset link" });
+      }
+      if (resetToken.used) {
+        return res.status(400).json({ message: "This reset link has already been used" });
+      }
+      if (new Date() > resetToken.expiresAt) {
+        return res.status(400).json({ message: "This reset link has expired" });
+      }
+
+      const hash = await bcrypt.hash(password, 10);
+      await storage.updatePassword(resetToken.userId, hash);
+      await storage.markTokenUsed(resetToken.id);
+
+      return res.json({ message: "Password has been reset successfully. You can now log in with your new password." });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      console.error("Reset password error:", err);
+      return res.status(500).json({ message: "Reset failed" });
+    }
   });
 
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {

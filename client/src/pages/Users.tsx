@@ -9,9 +9,86 @@ import { useToast } from "@/hooks/use-toast";
 import { redirectToLogin } from "@/lib/auth-utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Role } from "@shared/schema";
-import { Shield, Users as UsersIcon, BadgeCheck, Ban, Plus, UserPlus } from "lucide-react";
+import { Shield, Users as UsersIcon, BadgeCheck, Ban, Plus, UserPlus, KeyRound, Copy, Clock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+
+function PasswordResetRequests() {
+  const { toast } = useToast();
+  const { data: resets = [], isLoading } = useQuery<Array<{
+    id: number;
+    token: string;
+    userEmail: string | null;
+    userName: string | null;
+    expiresAt: string;
+    createdAt: string;
+  }>>({ queryKey: ["/api/admin/password-resets"] });
+
+  function copyResetLink(token: string) {
+    const url = `${window.location.origin}/reset-password?token=${token}`;
+    navigator.clipboard.writeText(url).then(
+      () => toast({ title: "Copied", description: "Reset link copied to clipboard. Share it with the user." }),
+      () => toast({ title: "Error", description: "Failed to copy link", variant: "destructive" }),
+    );
+  }
+
+  if (isLoading) return null;
+  if (resets.length === 0) return null;
+
+  return (
+    <GlassCard className="mb-4" testId="password-reset-requests">
+      <h5 className="mb-3 d-flex align-items-center gap-2">
+        <KeyRound style={{ width: 20, height: 20 }} className="text-warning" />
+        Pending Password Resets
+        <span className="badge bg-warning text-dark rounded-pill">{resets.length}</span>
+      </h5>
+      <p className="text-muted small mb-3">
+        Users who requested a password reset. Copy the reset link and share it with them directly.
+      </p>
+      <div className="table-responsive">
+        <table className="table align-middle mb-0">
+          <thead>
+            <tr className="text-muted small">
+              <th>User</th>
+              <th>Requested</th>
+              <th>Expires</th>
+              <th className="text-end">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {resets.map((r) => (
+              <tr key={r.id}>
+                <td>
+                  <div className="fw-semibold">{r.userName || "—"}</div>
+                  <div className="text-muted small">{r.userEmail}</div>
+                </td>
+                <td>
+                  <div className="d-flex align-items-center gap-1 text-muted small">
+                    <Clock style={{ width: 14, height: 14 }} />
+                    {new Date(r.createdAt).toLocaleString()}
+                  </div>
+                </td>
+                <td>
+                  <span className="text-muted small">{new Date(r.expiresAt).toLocaleString()}</span>
+                </td>
+                <td className="text-end">
+                  <button
+                    className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                    onClick={() => copyResetLink(r.token)}
+                    data-testid={`copy-reset-link-${r.id}`}
+                  >
+                    <Copy style={{ width: 14, height: 14 }} />
+                    Copy Reset Link
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </GlassCard>
+  );
+}
 
 export default function UsersPage() {
   const { toast } = useToast();
@@ -169,6 +246,8 @@ export default function UsersPage() {
               </form>
             </GlassCard>
           )}
+
+          <PasswordResetRequests />
 
           <GlassCard>
             <label className="form-label small text-muted">Search</label>

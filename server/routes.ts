@@ -180,6 +180,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.get("/api/admin/password-resets", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const me = await storage.getCurrentUser(userId);
+      if (!me || me.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const resets = await storage.listPendingPasswordResets();
+      res.json(resets);
+    } catch (err: any) {
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
   // Customers
   app.get(api.customers.list.path, isAuthenticated, async (req: any, res) => {
     try {
@@ -258,12 +273,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Books
   app.get(api.books.list.path, isAuthenticated, async (req: any, res) => {
     try {
+      const userId = getUserId(req);
+      const me = await storage.getCurrentUser(userId);
       const params = api.books.list.input?.parse(req.query);
       const list = await storage.listBooks({
         q: params?.q,
         category: params?.category,
         lowStock: params?.lowStock === "true",
       });
+      if (me?.role === "customer") {
+        const stripped = list.map(({ stockQty, buyingPrice, reorderLevel, ...book }) => ({
+          ...book,
+          stockQty: stockQty > 0 ? 1 : 0,
+          buyingPrice: "0",
+          reorderLevel: 0,
+        }));
+        return res.json(stripped);
+      }
       res.json(list);
     } catch (err: any) {
       if (err instanceof z.ZodError) {

@@ -114,7 +114,7 @@ export default function StoreCatalog() {
                     </span>
                     {book.stockQty != null && book.stockQty > 0 ? (
                       <span className="badge bg-success bg-opacity-10 text-success small" data-testid={`book-stock-${book.id}`}>
-                        {book.stockQty} in stock
+                        Available
                       </span>
                     ) : (
                       <span className="badge bg-danger bg-opacity-10 text-danger small">Out of stock</span>

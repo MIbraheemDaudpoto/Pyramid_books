@@ -7,6 +7,8 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import Dashboard from "@/pages/Dashboard";
 import Books from "@/pages/Books";
 import Customers from "@/pages/Customers";
@@ -112,6 +114,8 @@ function Router() {
       <Route path="/" component={HomeGate} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/store/:rest*" component={CustomerRoutes} />
       <Route path="/store" component={CustomerRoutes} />
       <Route path="/:rest*" component={AdminRoutes} />
