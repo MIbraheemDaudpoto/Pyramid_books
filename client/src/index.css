@@ -5,7 +5,7 @@
 @tailwind utilities;
 
 /* =========================================================
-   Pyramid Books — Professional Blue Distribution Console
+   Pyramid Books — Navy & Teal Distribution Console
    Bootstrap-backed admin dashboard with premium depth
    ========================================================= */
 
@@ -13,53 +13,53 @@
   --font-sans: "IBM Plex Sans", system-ui, -apple-system, Segoe UI, sans-serif;
   --font-display: "Fraunces", ui-serif, Georgia, serif;
 
-  /* Core palette — Professional blue scheme */
-  --background: 210 20% 97%;
-  --foreground: 210 29% 18%;
+  /* Core palette — Navy & Teal scheme matching logo */
+  --background: 216 22% 97%;
+  --foreground: 216 50% 16%;
 
   --card: 0 0% 100%;
-  --card-foreground: 210 29% 18%;
-  --card-border: 210 14% 89%;
+  --card-foreground: 216 50% 16%;
+  --card-border: 216 14% 89%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 210 29% 18%;
-  --popover-border: 210 14% 87%;
+  --popover-foreground: 216 50% 16%;
+  --popover-border: 216 14% 87%;
 
-  --border: 210 14% 87%;
-  --input: 210 14% 84%;
-  --ring: 204 70% 53%;
+  --border: 216 14% 87%;
+  --input: 216 14% 84%;
+  --ring: 184 100% 32%;
 
-  /* Brand: "#3498DB" Bright blue */
-  --primary: 204 70% 53%;
+  /* Brand: Logo teal/cyan */
+  --primary: 184 100% 32%;
   --primary-foreground: 0 0% 100%;
 
   /* Supporting tones */
-  --secondary: 210 18% 92%;
-  --secondary-foreground: 210 29% 18%;
+  --secondary: 216 18% 92%;
+  --secondary-foreground: 216 50% 16%;
 
-  --muted: 210 16% 93%;
-  --muted-foreground: 210 10% 42%;
+  --muted: 216 16% 93%;
+  --muted-foreground: 216 10% 42%;
 
-  /* Accent: "#2C3E50" Dark navy */
-  --accent: 210 29% 24%;
+  /* Accent: Logo dark navy */
+  --accent: 216 50% 21%;
   --accent-foreground: 0 0% 100%;
 
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
 
-  /* Sidebar tokens */
-  --sidebar: 210 29% 14%;
+  /* Sidebar tokens — deep navy from logo */
+  --sidebar: 216 52% 12%;
   --sidebar-foreground: 210 20% 92%;
-  --sidebar-border: 210 22% 20%;
-  --sidebar-primary: 204 70% 53%;
+  --sidebar-border: 216 40% 18%;
+  --sidebar-primary: 184 100% 32%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 204 70% 60%;
+  --sidebar-accent: 216 55% 38%;
   --sidebar-accent-foreground: 0 0% 100%;
-  --sidebar-ring: 204 70% 53%;
+  --sidebar-ring: 184 100% 32%;
 
   /* Charts */
-  --chart-1: 204 70% 53%;
-  --chart-2: 210 29% 24%;
+  --chart-1: 184 100% 32%;
+  --chart-2: 216 50% 21%;
   --chart-3: 152 52% 42%;
   --chart-4: 271 82% 61%;
   --chart-5: 45 92% 55%;
@@ -67,8 +67,8 @@
   --radius: 0.85rem;
 
   /* Shadows */
-  --shadow-soft: 0 4px 24px -6px rgba(44, 62, 80, 0.12), 0 1px 3px rgba(44, 62, 80, 0.06);
-  --shadow-lift: 0 12px 40px -10px rgba(44, 62, 80, 0.22), 0 2px 6px rgba(44, 62, 80, 0.08);
+  --shadow-soft: 0 4px 24px -6px rgba(26, 45, 80, 0.12), 0 1px 3px rgba(26, 45, 80, 0.06);
+  --shadow-lift: 0 12px 40px -10px rgba(26, 45, 80, 0.22), 0 2px 6px rgba(26, 45, 80, 0.08);
 
   /* Decorative grain */
   --grain-opacity: 0.06;
@@ -77,30 +77,30 @@
 }
 
 .dark {
-  --background: 210 29% 6%;
+  --background: 216 40% 6%;
   --foreground: 210 20% 92%;
 
-  --card: 210 26% 10%;
+  --card: 216 36% 10%;
   --card-foreground: 210 20% 92%;
-  --card-border: 210 22% 18%;
+  --card-border: 216 30% 18%;
 
-  --popover: 210 26% 10%;
+  --popover: 216 36% 10%;
   --popover-foreground: 210 20% 92%;
-  --popover-border: 210 22% 18%;
+  --popover-border: 216 30% 18%;
 
-  --border: 210 22% 18%;
-  --input: 210 22% 18%;
-  --ring: 204 70% 53%;
+  --border: 216 30% 18%;
+  --input: 216 30% 18%;
+  --ring: 184 100% 32%;
 
-  --secondary: 210 26% 14%;
+  --secondary: 216 36% 14%;
   --secondary-foreground: 210 20% 92%;
 
-  --muted: 210 24% 14%;
-  --muted-foreground: 210 14% 68%;
+  --muted: 216 32% 14%;
+  --muted-foreground: 216 14% 68%;
 
-  --sidebar: 210 29% 7%;
+  --sidebar: 216 48% 7%;
   --sidebar-foreground: 210 20% 92%;
-  --sidebar-border: 210 22% 16%;
+  --sidebar-border: 216 36% 16%;
 
   --grain-opacity: 0.10;
 
@@ -146,8 +146,8 @@
   inset: -2px;
   z-index: -2;
   background:
-    radial-gradient(900px 520px at 18% 6%, hsl(204 70% 53% / 0.10), transparent 55%),
-    radial-gradient(780px 520px at 88% 12%, hsl(210 29% 24% / 0.08), transparent 52%),
+    radial-gradient(900px 520px at 18% 6%, hsl(184 100% 32% / 0.08), transparent 55%),
+    radial-gradient(780px 520px at 88% 12%, hsl(216 50% 21% / 0.08), transparent 52%),
     radial-gradient(820px 620px at 40% 92%, hsl(152 52% 42% / 0.08), transparent 55%),
     linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
 }
@@ -231,7 +231,7 @@
 
 .btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px -4px rgba(44, 62, 80, 0.2);
+  box-shadow: 0 4px 12px -4px rgba(26, 45, 80, 0.2);
 }
 
 .btn:active {
@@ -241,12 +241,12 @@
 .btn-primary {
   --bs-btn-bg: hsl(var(--primary));
   --bs-btn-border-color: hsl(var(--primary));
-  --bs-btn-hover-bg: hsl(204 70% 46%);
-  --bs-btn-hover-border-color: hsl(204 70% 46%);
-  --bs-btn-active-bg: hsl(204 70% 42%);
-  --bs-btn-active-border-color: hsl(204 70% 42%);
-  --bs-btn-focus-shadow-rgb: 52, 152, 219;
-  background: linear-gradient(135deg, hsl(204 70% 56%), hsl(204 70% 48%));
+  --bs-btn-hover-bg: hsl(184 100% 28%);
+  --bs-btn-hover-border-color: hsl(184 100% 28%);
+  --bs-btn-active-bg: hsl(184 100% 25%);
+  --bs-btn-active-border-color: hsl(184 100% 25%);
+  --bs-btn-focus-shadow-rgb: 0, 163, 184;
+  background: linear-gradient(135deg, hsl(184 100% 36%), hsl(184 100% 30%));
 }
 
 .btn-outline-primary {
@@ -255,7 +255,7 @@
   --bs-btn-hover-bg: hsl(var(--primary));
   --bs-btn-hover-border-color: hsl(var(--primary));
   --bs-btn-hover-color: white;
-  --bs-btn-focus-shadow-rgb: 52, 152, 219;
+  --bs-btn-focus-shadow-rgb: 0, 163, 184;
 }
 
 .btn-outline-danger {

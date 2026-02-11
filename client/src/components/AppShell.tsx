@@ -2,7 +2,6 @@ import { Link, useLocation } from "wouter";
 import { useMemo, useState } from "react";
 import {
   BookOpen,
-  Boxes,
   CreditCard,
   LayoutDashboard,
   LogOut,
@@ -19,6 +18,7 @@ import {
 import type { Role } from "@shared/schema";
 import { useMe } from "@/hooks/use-me";
 import { cn } from "@/lib/utils";
+import logoSrc from "@assets/pyramid-books-logo-official.jpg";
 
 function roleLabel(role?: string) {
   switch (role) {
@@ -79,26 +79,13 @@ export default function AppShell(props: { children: React.ReactNode }) {
                 <span>Menu</span>
               </button>
 
-              <div className="d-none d-md-flex align-items-center gap-3">
-                <div
-                  className="rounded-3 d-inline-flex align-items-center justify-content-center"
-                  style={{
-                    width: 40,
-                    height: 40,
-                    background:
-                      "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 92%)",
-                    boxShadow: "var(--shadow-soft)",
-                  }}
-                  aria-hidden="true"
-                >
-                  <Boxes className="text-white" style={{ width: 20, height: 20 }} />
-                </div>
-                <div className="lh-1">
-                  <div className="fw-bold" style={{ fontFamily: "var(--font-display)" }}>
-                    Pyramid Books
-                  </div>
-                  <div className="text-muted small">Distribution Console</div>
-                </div>
+              <div className="d-none d-md-flex align-items-center gap-2">
+                <img
+                  src={logoSrc}
+                  alt="Pyramid Books"
+                  style={{ height: 40, objectFit: "contain" }}
+                  data-testid="topbar-logo"
+                />
               </div>
             </div>
 
@@ -182,31 +169,22 @@ export default function AppShell(props: { children: React.ReactNode }) {
         minHeight: "100vh",
         position: "sticky",
         top: 0,
-        background: "linear-gradient(180deg, hsl(var(--sidebar)) 0%, hsl(210 29% 8%) 100%)",
+        background: "linear-gradient(180deg, hsl(var(--sidebar)) 0%, hsl(216 52% 8%) 100%)",
         borderRight: "1px solid hsl(var(--sidebar-border) / 1)",
       }}
     >
       <div className="p-4 pb-3">
         <div className="d-flex align-items-center gap-3">
-          <div
-            className="rounded-4 d-inline-flex align-items-center justify-content-center"
+          <img
+            src={logoSrc}
+            alt="Pyramid Books"
             style={{
-              width: 44,
-              height: 44,
-              background:
-                "linear-gradient(135deg, hsl(var(--sidebar-primary)) 0%, hsl(var(--sidebar-accent)) 90%)",
-              boxShadow: "0 18px 44px -26px rgba(0,0,0,.65)",
+              height: 40,
+              objectFit: "contain",
+              filter: "brightness(0) invert(1)",
             }}
-            aria-hidden="true"
-          >
-            <Boxes className="text-white" style={{ width: 22, height: 22 }} />
-          </div>
-          <div className="lh-1">
-            <div className="text-white fw-bold" style={{ fontFamily: "var(--font-display)" }}>
-              Pyramid Books
-            </div>
-            <div className="text-white-50 small">Admin Desk</div>
-          </div>
+            data-testid="sidebar-logo"
+          />
         </div>
       </div>
 
@@ -312,7 +290,7 @@ export default function AppShell(props: { children: React.ReactNode }) {
           zIndex: 1045,
           width: 300,
           transition: "transform 260ms cubic-bezier(.2,.8,.2,1)",
-          background: "linear-gradient(180deg, hsl(var(--sidebar)) 0%, hsl(210 29% 8%) 100%)",
+          background: "linear-gradient(180deg, hsl(var(--sidebar)) 0%, hsl(216 52% 8%) 100%)",
           borderRight: "1px solid hsl(var(--sidebar-border) / 1)",
           padding: 16,
         }}
@@ -321,20 +299,15 @@ export default function AppShell(props: { children: React.ReactNode }) {
       >
         <div className="d-flex align-items-center justify-content-between mb-3">
           <div className="d-flex align-items-center gap-2">
-            <div
-              className="rounded-4 d-inline-flex align-items-center justify-content-center"
+            <img
+              src={logoSrc}
+              alt="Pyramid Books"
               style={{
-                width: 42,
-                height: 42,
-                background:
-                  "linear-gradient(135deg, hsl(var(--sidebar-primary)) 0%, hsl(var(--sidebar-accent)) 90%)",
+                height: 36,
+                objectFit: "contain",
+                filter: "brightness(0) invert(1)",
               }}
-            >
-              <Boxes className="text-white" style={{ width: 20, height: 20 }} />
-            </div>
-            <div className="text-white fw-bold" style={{ fontFamily: "var(--font-display)" }}>
-              Pyramid Books
-            </div>
+            />
           </div>
           <button
             type="button"

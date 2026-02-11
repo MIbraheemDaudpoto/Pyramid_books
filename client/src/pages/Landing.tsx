@@ -1,5 +1,6 @@
 import Seo from "@/components/Seo";
-import { Boxes, Sparkles, ShieldCheck, TrendingUp, Truck } from "lucide-react";
+import { Sparkles, ShieldCheck, TrendingUp, Truck } from "lucide-react";
+import logoSrc from "@assets/pyramid-books-logo-official.jpg";
 
 export default function Landing() {
   return (
@@ -12,23 +13,12 @@ export default function Landing() {
       <div className="container-fluid px-3 px-md-4 px-lg-5">
         <div className="py-4 d-flex align-items-center justify-content-between">
           <div className="d-flex align-items-center gap-3">
-            <div
-              className="rounded-4 d-inline-flex align-items-center justify-content-center"
-              style={{
-                width: 48,
-                height: 48,
-                background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 92%)",
-                boxShadow: "var(--shadow-soft)",
-              }}
-            >
-              <Boxes className="text-white" style={{ width: 22, height: 22 }} />
-            </div>
-            <div className="lh-1">
-              <div className="fw-bold" style={{ fontFamily: "var(--font-display)", fontSize: 20 }}>
-                Pyramid Books
-              </div>
-              <div className="text-muted small">Distribution Console</div>
-            </div>
+            <img
+              src={logoSrc}
+              alt="Pyramid Books"
+              style={{ height: 48, objectFit: "contain" }}
+              data-testid="landing-logo"
+            />
           </div>
 
           <div className="d-flex align-items-center gap-2">

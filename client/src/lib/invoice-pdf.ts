@@ -1,11 +1,11 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { OrderWithItemsResponse } from "@shared/schema";
-import logoUrl from "@assets/pyramid-books-logo.png";
+import logoUrl from "@assets/pyramid-books-logo-official.jpg";
 
 const COMPANY = {
   name: "Pyramid Books",
-  tagline: "Book Distribution & Publishing",
+  tagline: "Promoter & Distributor",
   address: "Latifabad, Hyderabad",
   phone: "",
   email: "",
@@ -42,18 +42,18 @@ export async function generateInvoicePDF(order: OrderWithItemsResponse) {
   const margin = 15;
   let y = margin;
 
-  doc.setFillColor(44, 62, 80);
+  doc.setFillColor(26, 45, 80);
   doc.rect(0, 0, pageWidth, 42, "F");
 
-  doc.setFillColor(52, 152, 219);
+  doc.setFillColor(0, 163, 184);
   doc.triangle(pageWidth - 60, 0, pageWidth, 0, pageWidth, 42, "F");
 
   try {
     const logoData = await loadImageAsBase64(logoUrl);
-    doc.addImage(logoData, "PNG", margin, y + 2, 18, 18);
+    doc.addImage(logoData, "JPEG", margin, y + 2, 36, 12);
   } catch (_) {}
 
-  const textOffset = margin + 22;
+  const textOffset = margin + 40;
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(22);
@@ -75,7 +75,7 @@ export async function generateInvoicePDF(order: OrderWithItemsResponse) {
 
   y = 50;
 
-  doc.setDrawColor(52, 152, 219);
+  doc.setDrawColor(0, 163, 184);
   doc.setLineWidth(0.5);
   doc.line(margin, y, pageWidth - margin, y);
 
@@ -151,7 +151,7 @@ export async function generateInvoicePDF(order: OrderWithItemsResponse) {
     body: tableBody,
     theme: "striped",
     headStyles: {
-      fillColor: [44, 62, 80],
+      fillColor: [26, 45, 80],
       textColor: [255, 255, 255],
       fontStyle: "bold",
       fontSize: 8.5,
@@ -184,7 +184,7 @@ export async function generateInvoicePDF(order: OrderWithItemsResponse) {
   const drawSummaryRow = (label: string, value: string, bold = false) => {
     doc.setFont("helvetica", bold ? "bold" : "normal");
     doc.setFontSize(bold ? 10 : 9);
-    doc.setTextColor(bold ? 44 : 80, bold ? 62 : 80, bold ? 80 : 80);
+    doc.setTextColor(bold ? 26 : 80, bold ? 45 : 80, bold ? 80 : 80);
     doc.text(label, summaryX, y);
     doc.text(value, valX, y, { align: "right" });
     y += 6;
@@ -198,12 +198,12 @@ export async function generateInvoicePDF(order: OrderWithItemsResponse) {
     drawSummaryRow("Tax:", money(order.tax));
   }
 
-  doc.setDrawColor(44, 62, 80);
+  doc.setDrawColor(26, 45, 80);
   doc.setLineWidth(0.3);
   doc.line(summaryX, y - 2, valX, y - 2);
   y += 2;
 
-  doc.setFillColor(44, 62, 80);
+  doc.setFillColor(26, 45, 80);
   doc.roundedRect(summaryX - 3, y - 5, valX - summaryX + 6, 10, 2, 2, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
@@ -236,7 +236,7 @@ export async function generateInvoicePDF(order: OrderWithItemsResponse) {
   }
 
   const footerY = doc.internal.pageSize.getHeight() - 12;
-  doc.setDrawColor(52, 152, 219);
+  doc.setDrawColor(0, 163, 184);
   doc.setLineWidth(0.5);
   doc.line(margin, footerY - 4, pageWidth - margin, footerY - 4);
 

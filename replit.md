@@ -7,7 +7,7 @@ A full-stack book distribution management system built with Node.js/Express, Pos
 - **Backend**: Express.js + TypeScript, Drizzle ORM, PostgreSQL (Neon)
 - **Frontend**: React + TypeScript, Bootstrap 5, wouter routing, TanStack Query v5
 - **Auth**: Custom email/password authentication with bcrypt hashing, express-session with PostgreSQL session store (connect-pg-simple)
-- **Styling**: Custom CSS with glassmorphic design, professional blue color scheme (#2C3E50/#3498DB)
+- **Styling**: Custom CSS with glassmorphic design, navy & teal color scheme matching official logo (navy #1A2D50 / teal #00A3B8)
 
 ## Project Architecture
 ```
@@ -142,7 +142,7 @@ users, customers, books, orders, order_items, payments, stock_receipts, stock_re
 - Invoice includes: company header with logo, customer billing info, line items table, per-book discount, totals, disclaimer footer
 - Created StoreOrderDetail page for customer order detail view with Download Invoice button
 - Added Download Invoice button to admin OrderDetail page
-- Invoice file: client/src/lib/invoice-pdf.ts, Logo: attached_assets/pyramid-books-logo.png
+- Invoice file: client/src/lib/invoice-pdf.ts, Logo: attached_assets/pyramid-books-logo-official.jpg
 - Removed stock quantity validation from checkout — customers can order any book regardless of stock availability
 - Removed credit limit checks from checkout and credit limit UI from Customers page
 - Admin/salesman can edit order item quantities (PATCH /api/orders/:orderId/items/:itemId) and delete items (DELETE /api/orders/:orderId/items/:itemId) with automatic total recalculation
@@ -156,3 +156,6 @@ users, customers, books, orders, order_items, payments, stock_receipts, stock_re
 - Customer orders list has direct Invoice download button
 - Salesman payment visibility: salesmen see payments from assigned customers (not all payments)
 - Renamed "Stock Receipts" to "Received Stock" throughout UI (sidebar, page title, empty state, dialog, CSV section)
+- Added buyingPrice and companyDiscount fields to stock_receipt_items for company pricing tracking
+- Updated to official Pyramid Books logo (attached_assets/pyramid-books-logo-official.jpg) used everywhere: sidebar, topbar, customer navbar, landing, login, signup, forgot/reset password, and PDF invoices
+- Color scheme updated to match logo: navy (#1A2D50) for dark elements/sidebar, teal (#00A3B8) for primary/interactive elements

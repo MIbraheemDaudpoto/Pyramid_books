@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Boxes, Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
+import logoSrc from "@assets/pyramid-books-logo-official.jpg";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function ForgotPassword() {
@@ -37,17 +38,13 @@ export default function ForgotPassword() {
       <div className="container" style={{ maxWidth: 440 }}>
         <div className="pb-glass rounded-4 p-4 p-md-5 pb-enter" style={{ boxShadow: "var(--shadow-lift)" }}>
           <div className="text-center mb-4">
-            <div
-              className="rounded-4 d-inline-flex align-items-center justify-content-center mb-3"
-              style={{
-                width: 56,
-                height: 56,
-                background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 92%)",
-                boxShadow: "var(--shadow-soft)",
-              }}
-            >
-              <Boxes className="text-white" style={{ width: 26, height: 26 }} />
-            </div>
+            <img
+              src={logoSrc}
+              alt="Pyramid Books"
+              className="mb-3"
+              style={{ height: 56, objectFit: "contain" }}
+              data-testid="forgot-password-logo"
+            />
             <h4 className="fw-bold mb-1" style={{ fontFamily: "var(--font-display)" }}>
               Forgot Password
             </h4>

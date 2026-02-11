@@ -2,7 +2,6 @@ import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import {
   BookOpen,
-  Boxes,
   LogOut,
   ShoppingCart,
   Receipt,
@@ -16,6 +15,7 @@ import type { Role } from "@shared/schema";
 import { useMe } from "@/hooks/use-me";
 import { cn } from "@/lib/utils";
 import { useCartCount } from "@/hooks/use-cart";
+import logoSrc from "@assets/pyramid-books-logo-official.jpg";
 
 function roleLabel(role?: string) {
   return "Customer";
@@ -58,19 +58,16 @@ export default function CustomerLayout(props: { children: React.ReactNode }) {
                   {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
                 </button>
                 <Link href="/store" className="d-flex align-items-center gap-2 text-decoration-none">
-                  <div
-                    className="rounded-3 d-inline-flex align-items-center justify-content-center"
+                  <img
+                    src={logoSrc}
+                    alt="Pyramid Books"
                     style={{
-                      width: 36,
-                      height: 36,
-                      background: "linear-gradient(135deg, hsl(var(--sidebar-primary)) 0%, hsl(var(--sidebar-accent)) 90%)",
+                      height: 32,
+                      objectFit: "contain",
+                      filter: "brightness(0) invert(1)",
                     }}
-                  >
-                    <Boxes className="text-white" style={{ width: 18, height: 18 }} />
-                  </div>
-                  <div className="text-white fw-bold d-none d-sm-block" style={{ fontFamily: "var(--font-display)" }}>
-                    Pyramid Books
-                  </div>
+                    data-testid="customer-logo"
+                  />
                 </Link>
               </div>
 
