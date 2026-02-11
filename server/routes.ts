@@ -518,7 +518,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const userId = getUserId(req);
       const me = await storage.getCurrentUser(userId);
-      if (!me || me.role !== "admin") {
+      if (!me || (me.role !== "admin" && me.role !== "salesman")) {
         return res.status(403).json({ message: "Forbidden" });
       }
       const booksList = await storage.listBooks();
@@ -540,7 +540,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const userId = getUserId(req);
       const me = await storage.getCurrentUser(userId);
-      if (!me || me.role !== "admin") {
+      if (!me || (me.role !== "admin" && me.role !== "salesman")) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
@@ -607,7 +607,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const userId = getUserId(req);
       const me = await storage.getCurrentUser(userId);
-      if (!me || me.role !== "admin") {
+      if (!me || (me.role !== "admin" && me.role !== "salesman")) {
         return res.status(403).json({ message: "Forbidden" });
       }
       const customersList = await storage.listCustomersForUser(userId);
@@ -629,7 +629,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const userId = getUserId(req);
       const me = await storage.getCurrentUser(userId);
-      if (!me || me.role !== "admin") {
+      if (!me || (me.role !== "admin" && me.role !== "salesman")) {
         return res.status(403).json({ message: "Forbidden" });
       }
 

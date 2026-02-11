@@ -74,7 +74,7 @@ function AdminRoutes() {
         <Route path="/stock" component={StockReceipts} />
         <Route path="/reports" component={Reports} />
         <Route path="/csv">
-          <RequireRole roles={["admin"]}>
+          <RequireRole roles={["admin", "salesman"]}>
             <CsvImportExport />
           </RequireRole>
         </Route>
