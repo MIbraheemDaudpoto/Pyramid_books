@@ -143,3 +143,10 @@ users, customers, books, orders, order_items, payments, stock_receipts, stock_re
 - Created StoreOrderDetail page for customer order detail view with Download Invoice button
 - Added Download Invoice button to admin OrderDetail page
 - Invoice file: client/src/lib/invoice-pdf.ts, Logo: attached_assets/pyramid-books-logo.png
+- Removed stock quantity validation from checkout — customers can order any book regardless of stock availability
+- Removed credit limit checks from checkout and credit limit UI from Customers page
+- Admin/salesman can edit order item quantities (PATCH /api/orders/:orderId/items/:itemId) and delete items (DELETE /api/orders/:orderId/items/:itemId) with automatic total recalculation
+- Admin OrderDetail page has inline edit/delete controls for each order line item
+- Resend integration for email notifications (via Replit connector)
+- New order email notifications sent to assigned salesman and admin users when customer places order
+- Email utility: server/email.ts, notification triggered in checkout route

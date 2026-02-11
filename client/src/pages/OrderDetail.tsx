@@ -389,7 +389,7 @@ export default function OrderDetailPage() {
         title="Remove Order Item"
         description="Are you sure you want to remove this item from the order? The stock will be restored."
         onConfirm={confirmDelete}
-        isPending={deleteItemMutation.isPending}
+        destructive
       />
     </AppShell>
   );

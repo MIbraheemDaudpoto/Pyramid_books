@@ -125,6 +125,10 @@ export interface IStorage {
   getUserWithPassword(userId: string): Promise<{ passwordHash: string | null } | null>;
   updatePassword(userId: string, hash: string): Promise<void>;
 
+  updateOrderItem(userId: string, orderId: number, itemId: number, qty: number): Promise<OrderWithItemsResponse>;
+  deleteOrderItem(userId: string, orderId: number, itemId: number): Promise<OrderWithItemsResponse>;
+  getOrderNotificationRecipients(customerId: number): Promise<string[]>;
+
   createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<PasswordResetToken>;
   getPasswordResetToken(token: string): Promise<(PasswordResetToken & { userEmail: string | null }) | null>;
   markTokenUsed(tokenId: number): Promise<void>;
@@ -646,6 +650,36 @@ export class DatabaseStorage implements IStorage {
       discount: String(discount) as any,
       total: String(total) as any,
     }).where(eq(orders.id, orderId));
+  }
+
+  async getOrderNotificationRecipients(customerId: number): Promise<string[]> {
+    const emails: string[] = [];
+
+    const [cust] = await db
+      .select({ assignedSalesmanUserId: customers.assignedSalesmanUserId })
+      .from(customers)
+      .where(eq(customers.id, customerId));
+
+    if (cust?.assignedSalesmanUserId) {
+      const [salesman] = await db
+        .select({ email: users.email })
+        .from(users)
+        .where(and(eq(users.id, cust.assignedSalesmanUserId), eq(users.isActive, true)));
+      if (salesman?.email) emails.push(salesman.email);
+    }
+
+    const admins = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(and(eq(users.role, "admin"), eq(users.isActive, true)));
+
+    for (const a of admins) {
+      if (a.email && !emails.includes(a.email)) {
+        emails.push(a.email);
+      }
+    }
+
+    return emails;
   }
 
   async listPaymentsForUser(userId: string): Promise<PaymentsListResponse> {

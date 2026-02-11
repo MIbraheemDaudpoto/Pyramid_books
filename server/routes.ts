@@ -5,6 +5,7 @@ import { z } from "zod";
 import { api } from "@shared/routes";
 import { storage } from "./storage";
 import { isAuthenticated, registerAuthRoutes, setupAuth } from "./replit_integrations/auth";
+import { sendNewOrderNotification } from "./email";
 
 const textParser = express.text({ type: ["text/csv", "text/plain", "application/csv"], limit: "10mb" });
 
@@ -838,6 +839,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const input = api.cart.checkout.input?.parse(req.body ?? {});
       const order = await storage.checkoutCart(userId, input?.notes);
       res.status(201).json(order);
+
+      try {
+        const recipientEmails = await storage.getOrderNotificationRecipients(order.customer.id);
+        if (recipientEmails.length > 0) {
+          const notifData = {
+            orderNo: order.orderNo,
+            customerName: order.customer.name,
+            total: Number(order.total).toFixed(2),
+            itemCount: order.items.length,
+            items: order.items.map((it: any) => ({
+              title: it.book.title,
+              qty: it.qty,
+              unitPrice: Number(it.unitPrice).toFixed(2),
+              lineTotal: Number(it.lineTotal).toFixed(2),
+            })),
+          };
+          sendNewOrderNotification(recipientEmails, notifData).catch(() => {});
+        }
+      } catch (_notifErr) {}
     } catch (err: any) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({
