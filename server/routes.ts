@@ -427,6 +427,34 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.patch("/api/orders/:orderId/items/:itemId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const orderId = Number(req.params.orderId);
+      const itemId = Number(req.params.itemId);
+      const { qty } = z.object({ qty: z.number().int().positive() }).parse(req.body);
+      const updated = await storage.updateOrderItem(userId, orderId, itemId, qty);
+      res.json(updated);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(asStatus(err)).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.delete("/api/orders/:orderId/items/:itemId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const orderId = Number(req.params.orderId);
+      const itemId = Number(req.params.itemId);
+      const updated = await storage.deleteOrderItem(userId, orderId, itemId);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(asStatus(err)).json({ message: err.message || "Error" });
+    }
+  });
+
   // Payments
   app.get(api.payments.list.path, isAuthenticated, async (req: any, res) => {
     try {

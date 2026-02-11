@@ -14,17 +14,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { z } from "zod";
 
-function money(n: any) {
-  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(Number(n || 0));
-}
-
 const customerFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   customerType: z.string().min(1, "Customer type is required"),
   phone: z.string().optional().or(z.literal("")),
   email: z.string().optional().or(z.literal("")),
   address: z.string().optional().or(z.literal("")),
-  creditLimit: z.coerce.number().nonnegative(),
   notes: z.string().optional().or(z.literal("")),
   assignedSalesmanUserId: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
@@ -68,7 +63,6 @@ export default function CustomersPage() {
     phone: "",
     email: "",
     address: "",
-    creditLimit: 0,
     notes: "",
     assignedSalesmanUserId: null,
     isActive: true,
@@ -81,7 +75,6 @@ export default function CustomersPage() {
       phone: "",
       email: "",
       address: "",
-      creditLimit: 0,
       notes: "",
       assignedSalesmanUserId: null,
       isActive: true,
@@ -99,7 +92,6 @@ export default function CustomersPage() {
       phone: c.phone ?? "",
       email: c.email ?? "",
       address: c.address ?? "",
-      creditLimit: Number(c.creditLimit ?? 0),
       notes: c.notes ?? "",
       assignedSalesmanUserId: (c.assignedSalesmanUserId ?? null) as any,
       isActive: Boolean(c.isActive),
@@ -124,7 +116,6 @@ export default function CustomersPage() {
       email: parsed.data.email || null,
       address: parsed.data.address || null,
       notes: parsed.data.notes || null,
-      creditLimit: String(parsed.data.creditLimit) as any,
       assignedSalesmanUserId: parsed.data.assignedSalesmanUserId ?? null,
       isActive: parsed.data.isActive ?? true,
       createdAt: undefined as any,
@@ -153,7 +144,6 @@ export default function CustomersPage() {
       email: parsed.data.email || null,
       address: parsed.data.address || null,
       notes: parsed.data.notes || null,
-      creditLimit: String(parsed.data.creditLimit) as any,
       assignedSalesmanUserId: parsed.data.assignedSalesmanUserId ?? null,
       isActive: parsed.data.isActive ?? true,
     } as any;
@@ -183,11 +173,11 @@ export default function CustomersPage() {
 
   return (
     <AppShell>
-      <Seo title="Customers — Pyramid Books" description="Manage customers, credit limits, and assignments." />
+      <Seo title="Customers — Pyramid Books" description="Manage customers and assignments." />
 
       <SectionHeader
         title="Customers"
-        subtitle={canManage ? "Profiles, credit limits, and notes. Search fast—act carefully." : "Your customer information."}
+        subtitle={canManage ? "Profiles and notes. Search fast—act carefully." : "Your customer information."}
         right={
           <div className="d-flex flex-wrap gap-2">
             {canManage && (
@@ -253,7 +243,6 @@ export default function CustomersPage() {
                     <th style={{ minWidth: 260 }}>Customer</th>
                     <th>Type</th>
                     <th className="d-none d-lg-table-cell">Contact</th>
-                    <th className="text-end">Credit</th>
                     <th className="text-end" style={{ width: 160 }}>Actions</th>
                   </tr>
                 </thead>
@@ -281,7 +270,6 @@ export default function CustomersPage() {
                         <div>{c.phone ?? "—"}</div>
                         <div className="text-muted small">{c.email ?? "—"}</div>
                       </td>
-                      <td className="text-end fw-semibold">{money(c.creditLimit)}</td>
                       <td className="text-end">
                         <div className="d-inline-flex gap-2">
                           <button
@@ -339,11 +327,6 @@ export default function CustomersPage() {
               <label className="form-label">Email</label>
               <input className="form-control" value={form.email ?? ""} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} data-testid="customer-form-email" />
             </div>
-            <div className="col-12 col-md-4">
-              <label className="form-label">Credit limit</label>
-              <input type="number" step="0.01" className="form-control" value={form.creditLimit} onChange={(e) => setForm((p) => ({ ...p, creditLimit: Number(e.target.value) }))} data-testid="customer-form-credit" />
-            </div>
-
             <div className="col-12">
               <label className="form-label">Address</label>
               <textarea className="form-control" rows={2} value={form.address ?? ""} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} data-testid="customer-form-address" />
@@ -392,11 +375,6 @@ export default function CustomersPage() {
               <label className="form-label">Email</label>
               <input className="form-control" value={form.email ?? ""} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} data-testid="customer-edit-email" />
             </div>
-            <div className="col-12 col-md-4">
-              <label className="form-label">Credit limit</label>
-              <input type="number" step="0.01" className="form-control" value={form.creditLimit} onChange={(e) => setForm((p) => ({ ...p, creditLimit: Number(e.target.value) }))} data-testid="customer-edit-credit" />
-            </div>
-
             <div className="col-12">
               <label className="form-label">Address</label>
               <textarea className="form-control" rows={2} value={form.address ?? ""} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} data-testid="customer-edit-address" />

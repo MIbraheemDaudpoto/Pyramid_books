@@ -1,13 +1,16 @@
 import AppShell from "@/components/AppShell";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import GlassCard from "@/components/GlassCard";
 import SectionHeader from "@/components/SectionHeader";
 import Seo from "@/components/Seo";
 import { useOrder, useUpdateOrderStatus } from "@/hooks/use-orders";
 import { useToast } from "@/hooks/use-toast";
 import { redirectToLogin } from "@/lib/auth-utils";
-import { ArrowLeft, PackageCheck, PackageSearch, Truck, XCircle, ClipboardCheck, Receipt, Download } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ArrowLeft, PackageCheck, PackageSearch, Truck, XCircle, ClipboardCheck, Receipt, Download, Pencil, Trash2, Check, X } from "lucide-react";
 import { generateInvoicePDF } from "@/lib/invoice-pdf";
 import { useEffect, useMemo, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
 
 function money(n: any) {
@@ -55,6 +58,10 @@ export default function OrderDetailPage() {
   }, [error, toast]);
 
   const [nextStatus, setNextStatus] = useState<string>("confirmed");
+  const [editingItemId, setEditingItemId] = useState<number | null>(null);
+  const [editQty, setEditQty] = useState<number>(1);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
 
   const allowedNext = useMemo(() => {
     if (!data) return statuses;
@@ -69,6 +76,53 @@ export default function OrderDetailPage() {
         onError: (e) => toast({ title: "Update failed", description: (e as Error).message, variant: "destructive" }),
       },
     );
+  }
+
+  const updateItemMutation = useMutation({
+    mutationFn: async ({ itemId, qty }: { itemId: number; qty: number }) => {
+      const res = await apiRequest("PATCH", `/api/orders/${id}/items/${itemId}`, { qty });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders", id] });
+      setEditingItemId(null);
+      toast({ title: "Item updated", description: "Quantity has been updated." });
+    },
+    onError: (e) => toast({ title: "Update failed", description: (e as Error).message, variant: "destructive" }),
+  });
+
+  const deleteItemMutation = useMutation({
+    mutationFn: async (itemId: number) => {
+      const res = await apiRequest("DELETE", `/api/orders/${id}/items/${itemId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders", id] });
+      setConfirmDeleteOpen(false);
+      setDeletingItemId(null);
+      toast({ title: "Item removed", description: "Order item has been removed." });
+    },
+    onError: (e) => toast({ title: "Delete failed", description: (e as Error).message, variant: "destructive" }),
+  });
+
+  function startEdit(itemId: number, currentQty: number) {
+    setEditingItemId(itemId);
+    setEditQty(currentQty);
+  }
+
+  function confirmEdit() {
+    if (editingItemId === null) return;
+    updateItemMutation.mutate({ itemId: editingItemId, qty: editQty });
+  }
+
+  function askDeleteItem(itemId: number) {
+    setDeletingItemId(itemId);
+    setConfirmDeleteOpen(true);
+  }
+
+  function confirmDelete() {
+    if (deletingItemId === null) return;
+    deleteItemMutation.mutate(deletingItemId);
   }
 
   return (
@@ -147,20 +201,76 @@ export default function OrderDetailPage() {
                       <th className="text-end">Qty</th>
                       <th className="text-end">Unit</th>
                       <th className="text-end">Line</th>
+                      <th className="text-end" style={{ width: 100 }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.items.map((it) => (
-                      <tr key={it.id}>
+                      <tr key={it.id} data-testid={`order-item-row-${it.id}`}>
                         <td>
                           <div className="fw-semibold">{it.book.title}</div>
                           <div className="text-muted small">
                             {it.book.author ?? "—"} {it.book.isbn ? `• ${it.book.isbn}` : ""}
                           </div>
                         </td>
-                        <td className="text-end">{it.qty}</td>
+                        <td className="text-end">
+                          {editingItemId === it.id ? (
+                            <input
+                              type="number"
+                              min={1}
+                              className="form-control form-control-sm text-end"
+                              style={{ width: 70, display: "inline-block" }}
+                              value={editQty}
+                              onChange={(e) => setEditQty(Number(e.target.value))}
+                              data-testid={`order-item-qty-input-${it.id}`}
+                            />
+                          ) : (
+                            it.qty
+                          )}
+                        </td>
                         <td className="text-end fw-semibold">{money(it.unitPrice)}</td>
                         <td className="text-end fw-semibold">{money(it.lineTotal)}</td>
+                        <td className="text-end">
+                          {editingItemId === it.id ? (
+                            <div className="d-inline-flex gap-1">
+                              <button
+                                className="btn btn-sm btn-outline-success d-inline-flex align-items-center"
+                                onClick={confirmEdit}
+                                disabled={updateItemMutation.isPending}
+                                data-testid={`order-item-save-${it.id}`}
+                              >
+                                <Check className="w-3 h-3" />
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center"
+                                onClick={() => setEditingItemId(null)}
+                                data-testid={`order-item-cancel-${it.id}`}
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="d-inline-flex gap-1">
+                              <button
+                                className="btn btn-sm btn-outline-primary d-inline-flex align-items-center"
+                                onClick={() => startEdit(it.id, it.qty)}
+                                data-testid={`order-item-edit-${it.id}`}
+                                title="Edit quantity"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline-danger d-inline-flex align-items-center"
+                                onClick={() => askDeleteItem(it.id)}
+                                disabled={data.items.length <= 1}
+                                data-testid={`order-item-delete-${it.id}`}
+                                title={data.items.length <= 1 ? "Cannot remove last item" : "Remove item"}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -272,6 +382,15 @@ export default function OrderDetailPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title="Remove Order Item"
+        description="Are you sure you want to remove this item from the order? The stock will be restored."
+        onConfirm={confirmDelete}
+        isPending={deleteItemMutation.isPending}
+      />
     </AppShell>
   );
 }

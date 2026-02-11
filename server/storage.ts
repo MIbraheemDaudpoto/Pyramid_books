@@ -495,9 +495,6 @@ export class DatabaseStorage implements IStorage {
       if (qty <= 0) {
         throw Object.assign(new Error("Quantity must be positive"), { status: 400 });
       }
-      if (b.stockQty < qty) {
-        throw Object.assign(new Error(`Insufficient stock for ${b.title}`), { status: 400 });
-      }
       if (Math.abs(line - qty * unit) > 0.01) {
         throw Object.assign(new Error("Line total mismatch"), { status: 400 });
       }
@@ -577,6 +574,78 @@ export class DatabaseStorage implements IStorage {
       throw Object.assign(new Error("Order not found"), { status: 404 });
     }
     return full;
+  }
+
+  async updateOrderItem(userId: string, orderId: number, itemId: number, qty: number): Promise<OrderWithItemsResponse> {
+    const me = await this.getCurrentUser(userId);
+    if (!me) throw Object.assign(new Error("Unauthorized"), { status: 401 });
+    if (me.role !== "admin" && me.role !== "salesman") throw Object.assign(new Error("Forbidden"), { status: 403 });
+
+    const [o] = await db.select().from(orders).where(eq(orders.id, orderId));
+    if (!o) throw Object.assign(new Error("Order not found"), { status: 404 });
+    if (me.role === "salesman" && o.createdByUserId !== userId) throw Object.assign(new Error("Forbidden"), { status: 403 });
+
+    const [item] = await db.select().from(orderItems).where(and(eq(orderItems.id, itemId), eq(orderItems.orderId, orderId)));
+    if (!item) throw Object.assign(new Error("Order item not found"), { status: 404 });
+
+    if (qty <= 0) throw Object.assign(new Error("Quantity must be positive"), { status: 400 });
+
+    const unitPrice = toNumber(item.unitPrice);
+    const newLineTotal = unitPrice * qty;
+    const qtyDiff = qty - item.qty;
+
+    await db.update(orderItems).set({ qty, lineTotal: String(newLineTotal) as any }).where(eq(orderItems.id, itemId));
+
+    if (qtyDiff !== 0) {
+      await db.update(books).set({ stockQty: sql`${books.stockQty} - ${qtyDiff}` }).where(eq(books.id, item.bookId));
+    }
+
+    await this._recalcOrderTotals(orderId);
+
+    const full = await this.getOrderForUser(userId, orderId);
+    if (!full) throw Object.assign(new Error("Order not found"), { status: 500 });
+    return full;
+  }
+
+  async deleteOrderItem(userId: string, orderId: number, itemId: number): Promise<OrderWithItemsResponse> {
+    const me = await this.getCurrentUser(userId);
+    if (!me) throw Object.assign(new Error("Unauthorized"), { status: 401 });
+    if (me.role !== "admin" && me.role !== "salesman") throw Object.assign(new Error("Forbidden"), { status: 403 });
+
+    const [o] = await db.select().from(orders).where(eq(orders.id, orderId));
+    if (!o) throw Object.assign(new Error("Order not found"), { status: 404 });
+    if (me.role === "salesman" && o.createdByUserId !== userId) throw Object.assign(new Error("Forbidden"), { status: 403 });
+
+    const [item] = await db.select().from(orderItems).where(and(eq(orderItems.id, itemId), eq(orderItems.orderId, orderId)));
+    if (!item) throw Object.assign(new Error("Order item not found"), { status: 404 });
+
+    await db.update(books).set({ stockQty: sql`${books.stockQty} + ${item.qty}` }).where(eq(books.id, item.bookId));
+    await db.delete(orderItems).where(eq(orderItems.id, itemId));
+
+    await this._recalcOrderTotals(orderId);
+
+    const full = await this.getOrderForUser(userId, orderId);
+    if (!full) throw Object.assign(new Error("Order not found"), { status: 500 });
+    return full;
+  }
+
+  private async _recalcOrderTotals(orderId: number) {
+    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+    const subtotal = items.reduce((s, i) => s + toNumber(i.lineTotal), 0);
+
+    const [o] = await db.select().from(orders).where(eq(orders.id, orderId));
+    if (!o) return;
+
+    const discountPct = toNumber(o.discountPercentage);
+    const discount = subtotal * discountPct / 100;
+    const tax = toNumber(o.tax);
+    const total = subtotal - discount + tax;
+
+    await db.update(orders).set({
+      subtotal: String(subtotal) as any,
+      discount: String(discount) as any,
+      total: String(total) as any,
+    }).where(eq(orders.id, orderId));
   }
 
   async listPaymentsForUser(userId: string): Promise<PaymentsListResponse> {
@@ -1098,10 +1167,6 @@ export class DatabaseStorage implements IStorage {
       const unitPrice = toNumber(item.book.unitPrice);
       const lineTotal = unitPrice * item.qty;
 
-      if (item.book.stockQty < item.qty) {
-        throw Object.assign(new Error(`Insufficient stock for ${item.book.title}`), { status: 400 });
-      }
-
       orderItemsData.push({
         bookId: item.bookId,
         qty: item.qty,
@@ -1114,35 +1179,6 @@ export class DatabaseStorage implements IStorage {
     const discountPct = await this.findBestDiscount(subtotal);
     const discountAmount = subtotal * discountPct / 100;
     const total = subtotal - discountAmount;
-
-    if (me.role === "customer" && me.customerId) {
-      const [cust] = await db
-        .select({ creditLimit: customers.creditLimit })
-        .from(customers)
-        .where(eq(customers.id, customerId));
-
-      if (cust) {
-        const creditLimit = toNumber(cust.creditLimit);
-
-        const [{ total: totalOrders }] = await db
-          .select({ total: sql<number>`coalesce(sum(${orders.total}), 0)` })
-          .from(orders)
-          .where(eq(orders.customerId, customerId));
-
-        const [{ total: totalPaid }] = await db
-          .select({ total: sql<number>`coalesce(sum(${payments.amount}), 0)` })
-          .from(payments)
-          .where(eq(payments.customerId, customerId));
-
-        const outstanding = Number(totalOrders) - Number(totalPaid);
-        if (outstanding + total > creditLimit) {
-          throw Object.assign(
-            new Error(`Order exceeds credit limit. Outstanding: ${outstanding.toFixed(2)}, New order: ${total.toFixed(2)}, Credit limit: ${creditLimit.toFixed(2)}`),
-            { status: 400 },
-          );
-        }
-      }
-    }
 
     const orderNo = `PB-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1e6)).padStart(6, "0")}`;
 
