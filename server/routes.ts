@@ -546,7 +546,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get(api.csv.templateStock.path, isAuthenticated, async (_req: any, res) => {
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", "attachment; filename=stock_receipts_template.csv");
-    res.send("publisher,bookTitle,qty,notes\n");
+    res.send("publisher,bookTitle,qty,buyingPrice,companyDiscount,notes\n");
   });
 
   app.get(api.csv.exportBooks.path, isAuthenticated, async (req: any, res) => {
@@ -735,7 +735,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(403).json({ message: "Forbidden" });
       }
       const receipts = await storage.listStockReceipts();
-      const headers = ["receiptNo", "publisher", "receivedByName", "receivedAt", "bookTitle", "qty", "notes"];
+      const headers = ["receiptNo", "publisher", "receivedByName", "receivedAt", "bookTitle", "qty", "buyingPrice", "companyDiscount", "notes"];
       const rows: string[] = [];
       for (const r of receipts) {
         for (const item of r.items) {
@@ -747,6 +747,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               csvEscape(r.receivedAt ? new Date(r.receivedAt).toISOString() : ""),
               csvEscape(item.bookTitle),
               String(item.qty),
+              String(item.buyingPrice ?? "0"),
+              String(item.companyDiscount ?? "0"),
               csvEscape(r.notes ?? ""),
             ].join(",")
           );
@@ -781,7 +783,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       const headers = rows[0].map((h) => h.trim().toLowerCase());
-      const grouped: Record<string, { items: Array<{ bookTitle: string; qty: number }>; notes: string }> = {};
+      const grouped: Record<string, { items: Array<{ bookTitle: string; qty: number; buyingPrice: string; companyDiscount: string }>; notes: string }> = {};
 
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
@@ -794,6 +796,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const publisher = obj.publisher || "Unknown";
         const bookTitle = obj.booktitle || obj.book_title || obj.title || "";
         const qty = parseInt(obj.qty || obj.quantity || "1", 10) || 1;
+        const buyingPrice = obj.buyingprice || obj.buying_price || "0";
+        const companyDiscount = obj.companydiscount || obj.company_discount || "0";
         const notes = obj.notes || "";
 
         if (!bookTitle) continue;
@@ -806,7 +810,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             ? `${grouped[publisher].notes}; ${notes}`
             : notes;
         }
-        grouped[publisher].items.push({ bookTitle, qty });
+        grouped[publisher].items.push({ bookTitle, qty, buyingPrice, companyDiscount });
       }
 
       let totalReceipts = 0;
@@ -826,7 +830,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             errors.push(`Book not found: "${item.bookTitle}"`);
             continue;
           }
-          receiptItems.push({ bookId: match.id, qty: item.qty });
+          receiptItems.push({
+            bookId: match.id,
+            qty: item.qty,
+            buyingPrice: item.buyingPrice,
+            companyDiscount: item.companyDiscount,
+          });
           totalItems++;
         }
 

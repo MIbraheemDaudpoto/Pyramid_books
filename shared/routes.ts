@@ -330,6 +330,8 @@ export const api = {
         items: z.array(z.object({
           bookId: z.coerce.number(),
           qty: z.coerce.number().int().positive(),
+          buyingPrice: z.string().optional(),
+          companyDiscount: z.string().optional(),
         })).min(1),
         notes: z.string().optional(),
       }).strict(),

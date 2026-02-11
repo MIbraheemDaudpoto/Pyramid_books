@@ -242,6 +242,12 @@ export const stockReceiptItems = pgTable(
       .notNull()
       .references(() => books.id, { onDelete: "restrict" }),
     qty: integer("qty").notNull(),
+    buyingPrice: numeric("buying_price", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    companyDiscount: numeric("company_discount", { precision: 5, scale: 2 })
+      .notNull()
+      .default("0"),
   },
   (table) => [
     index("IDX_stock_receipt_items_receipt").on(table.receiptId),
@@ -493,7 +499,7 @@ export type PaymentsListResponse = Array<
 
 export interface CreateStockReceiptRequest {
   publisher: string;
-  items: Array<{ bookId: number; qty: number }>;
+  items: Array<{ bookId: number; qty: number; buyingPrice?: string; companyDiscount?: string }>;
   notes?: string;
 }
 

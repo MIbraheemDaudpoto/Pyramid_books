@@ -16,9 +16,15 @@ function fmtDate(d: string | Date | null) {
   return new Date(d).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+function money(n: any) {
+  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(Number(n || 0));
+}
+
 interface ReceiptItem {
   bookId: number;
   qty: number;
+  buyingPrice: string;
+  companyDiscount: string;
 }
 
 export default function StockReceiptsPage() {
@@ -38,23 +44,23 @@ export default function StockReceiptsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [publisher, setPublisher] = useState("");
   const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<ReceiptItem[]>([{ bookId: 0, qty: 1 }]);
+  const [items, setItems] = useState<ReceiptItem[]>([{ bookId: 0, qty: 1, buyingPrice: "", companyDiscount: "" }]);
 
   function resetForm() {
     setPublisher("");
     setNotes("");
-    setItems([{ bookId: 0, qty: 1 }]);
+    setItems([{ bookId: 0, qty: 1, buyingPrice: "", companyDiscount: "" }]);
   }
 
   function addItem() {
-    setItems([...items, { bookId: 0, qty: 1 }]);
+    setItems([...items, { bookId: 0, qty: 1, buyingPrice: "", companyDiscount: "" }]);
   }
 
   function removeItem(idx: number) {
     setItems(items.filter((_, i) => i !== idx));
   }
 
-  function updateItem(idx: number, field: keyof ReceiptItem, value: number) {
+  function updateItem(idx: number, field: keyof ReceiptItem, value: string | number) {
     const next = [...items];
     next[idx] = { ...next[idx], [field]: value };
     setItems(next);
@@ -75,7 +81,12 @@ export default function StockReceiptsPage() {
     try {
       await createMutation.mutateAsync({
         publisher: publisher.trim(),
-        items: validItems,
+        items: validItems.map((i) => ({
+          bookId: i.bookId,
+          qty: i.qty,
+          buyingPrice: i.buyingPrice || "0",
+          companyDiscount: i.companyDiscount || "0",
+        })),
         notes: notes.trim() || undefined,
       });
       toast({ title: "Received stock recorded" });
@@ -140,13 +151,19 @@ export default function StockReceiptsPage() {
                     <td className="fw-semibold">{r.receiptNo}</td>
                     <td>{r.publisher}</td>
                     <td>
-                      {r.items.map((item, idx) => (
+                      {r.items.map((item: any, idx: number) => (
                         <div key={idx} className="small">
                           {item.bookTitle} x{item.qty}
+                          {Number(item.buyingPrice) > 0 && (
+                            <span className="text-muted ms-1">@ {money(item.buyingPrice)}</span>
+                          )}
+                          {Number(item.companyDiscount) > 0 && (
+                            <span className="text-success ms-1">({item.companyDiscount}% off)</span>
+                          )}
                         </div>
                       ))}
                     </td>
-                    <td>{r.items.reduce((sum, i) => sum + i.qty, 0)}</td>
+                    <td>{r.items.reduce((sum: number, i: any) => sum + i.qty, 0)}</td>
                     <td>{r.receivedByName}</td>
                     <td>{fmtDate(r.receivedAt)}</td>
                     <td className="text-muted small">{r.notes || "-"}</td>
@@ -159,29 +176,31 @@ export default function StockReceiptsPage() {
       </GlassCard>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-lg" style={{ maxWidth: 600 }}>
+        <DialogContent className="sm:max-w-lg" style={{ maxWidth: 720 }}>
           <DialogHeader>
             <DialogTitle>New Received Stock</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate} data-testid="stock-receipt-form">
             <div className="mb-3">
-              <label className="form-label fw-semibold">Publisher</label>
+              <label className="form-label fw-semibold">Publisher / Company</label>
               <input
                 type="text"
                 className="form-control"
                 value={publisher}
                 onChange={(e) => setPublisher(e.target.value)}
-                placeholder="Enter publisher name"
+                placeholder="Enter publisher or company name"
                 data-testid="input-publisher"
               />
             </div>
 
             <div className="mb-3">
               <label className="form-label fw-semibold">Books</label>
+              <div className="small text-muted mb-2">Select books, enter quantity, buying price, and company discount %</div>
               {items.map((item, idx) => (
-                <div key={idx} className="d-flex gap-2 mb-2 align-items-center">
+                <div key={idx} className="d-flex gap-2 mb-2 align-items-center flex-wrap">
                   <select
-                    className="form-select flex-grow-1"
+                    className="form-select"
+                    style={{ minWidth: 180, flex: "2 1 0" }}
                     value={item.bookId}
                     onChange={(e) => updateItem(idx, "bookId", Number(e.target.value))}
                     data-testid={`select-book-${idx}`}
@@ -196,11 +215,38 @@ export default function StockReceiptsPage() {
                   <input
                     type="number"
                     className="form-control"
-                    style={{ width: 90 }}
+                    style={{ width: 75 }}
                     min={1}
                     value={item.qty}
                     onChange={(e) => updateItem(idx, "qty", Number(e.target.value))}
+                    placeholder="Qty"
+                    title="Quantity"
                     data-testid={`input-qty-${idx}`}
+                  />
+                  <input
+                    type="number"
+                    className="form-control"
+                    style={{ width: 100 }}
+                    min={0}
+                    step="0.01"
+                    value={item.buyingPrice}
+                    onChange={(e) => updateItem(idx, "buyingPrice", e.target.value)}
+                    placeholder="Buy Price"
+                    title="Buying Price"
+                    data-testid={`input-buying-price-${idx}`}
+                  />
+                  <input
+                    type="number"
+                    className="form-control"
+                    style={{ width: 90 }}
+                    min={0}
+                    max={100}
+                    step="0.1"
+                    value={item.companyDiscount}
+                    onChange={(e) => updateItem(idx, "companyDiscount", e.target.value)}
+                    placeholder="Disc %"
+                    title="Company Discount %"
+                    data-testid={`input-company-discount-${idx}`}
                   />
                   {items.length > 1 && (
                     <button

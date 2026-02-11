@@ -824,6 +824,8 @@ export class DatabaseStorage implements IStorage {
           receiptId: stockReceiptItems.receiptId,
           bookId: stockReceiptItems.bookId,
           qty: stockReceiptItems.qty,
+          buyingPrice: stockReceiptItems.buyingPrice,
+          companyDiscount: stockReceiptItems.companyDiscount,
           bookTitle: books.title,
         })
         .from(stockReceiptItems)
@@ -862,7 +864,7 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
 
-    const insertedItems: Array<{ id: number; receiptId: number; bookId: number; qty: number; bookTitle: string }> = [];
+    const insertedItems: Array<any> = [];
 
     for (const item of input.items) {
       const [inserted] = await db
@@ -871,12 +873,18 @@ export class DatabaseStorage implements IStorage {
           receiptId: created.id,
           bookId: item.bookId,
           qty: item.qty,
+          buyingPrice: item.buyingPrice ?? "0",
+          companyDiscount: item.companyDiscount ?? "0",
         })
         .returning();
 
+      const updateSet: any = { stockQty: sql`${books.stockQty} + ${item.qty}` };
+      if (item.buyingPrice && parseFloat(item.buyingPrice) > 0) {
+        updateSet.buyingPrice = item.buyingPrice;
+      }
       await db
         .update(books)
-        .set({ stockQty: sql`${books.stockQty} + ${item.qty}` })
+        .set(updateSet)
         .where(eq(books.id, item.bookId));
 
       const [book] = await db.select({ title: books.title }).from(books).where(eq(books.id, item.bookId));
