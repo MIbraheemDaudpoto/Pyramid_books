@@ -149,6 +149,12 @@ function nameOf(u: { firstName: string | null; lastName: string | null; email: s
 }
 
 export class DatabaseStorage implements IStorage {
+  private async isSalesmanForCustomer(userId: string, customerId: number): Promise<boolean> {
+    const [c] = await db.select({ assignedSalesmanUserId: customers.assignedSalesmanUserId })
+      .from(customers).where(eq(customers.id, customerId));
+    return !!c && c.assignedSalesmanUserId === userId;
+  }
+
   async findUserByEmail(email: string): Promise<User | undefined> {
     const [u] = await db.select().from(users).where(eq(users.email, email));
     return u;
@@ -350,7 +356,14 @@ export class DatabaseStorage implements IStorage {
     if (me.role === "admin") {
       whereClause = undefined;
     } else if (me.role === "salesman") {
-      whereClause = eq(orders.createdByUserId, userId);
+      const assignedCustIds = await db.select({ id: customers.id }).from(customers)
+        .where(eq(customers.assignedSalesmanUserId, userId));
+      const custIds = assignedCustIds.map(c => c.id);
+      if (custIds.length > 0) {
+        whereClause = sql`(${orders.createdByUserId} = ${userId} OR ${orders.customerId} IN (${sql.join(custIds.map(id => sql`${id}`), sql`, `)}))`;
+      } else {
+        whereClause = eq(orders.createdByUserId, userId);
+      }
     } else if (me.role === "customer") {
       if (me.customerId) {
         whereClause = sql`(${orders.customerId} = ${me.customerId} OR ${orders.createdByUserId} = ${userId})`;
@@ -390,9 +403,10 @@ export class DatabaseStorage implements IStorage {
     const [o] = await db.select().from(orders).where(eq(orders.id, id));
     if (!o) return undefined;
 
+    const isSalesmanAssigned = me.role === "salesman" && await this.isSalesmanForCustomer(userId, o.customerId);
     const canView =
       me.role === "admin" ||
-      (me.role === "salesman" && o.createdByUserId === userId) ||
+      (me.role === "salesman" && (o.createdByUserId === userId || isSalesmanAssigned)) ||
       (me.role === "customer" && (o.createdByUserId === userId || (me.customerId && o.customerId === me.customerId)));
 
     if (!canView) {
@@ -564,8 +578,9 @@ export class DatabaseStorage implements IStorage {
       throw Object.assign(new Error("Order not found"), { status: 404 });
     }
 
+    const isSalesmanAssigned = me.role === "salesman" && await this.isSalesmanForCustomer(userId, o.customerId);
     const canUpdate =
-      me.role === "admin" || (me.role === "salesman" && o.createdByUserId === userId);
+      me.role === "admin" || (me.role === "salesman" && (o.createdByUserId === userId || isSalesmanAssigned));
 
     if (!canUpdate) {
       throw Object.assign(new Error("Forbidden"), { status: 403 });
@@ -587,7 +602,9 @@ export class DatabaseStorage implements IStorage {
 
     const [o] = await db.select().from(orders).where(eq(orders.id, orderId));
     if (!o) throw Object.assign(new Error("Order not found"), { status: 404 });
-    if (me.role === "salesman" && o.createdByUserId !== userId) throw Object.assign(new Error("Forbidden"), { status: 403 });
+    if (me.role === "salesman" && o.createdByUserId !== userId && !(await this.isSalesmanForCustomer(userId, o.customerId))) {
+      throw Object.assign(new Error("Forbidden"), { status: 403 });
+    }
 
     const [item] = await db.select().from(orderItems).where(and(eq(orderItems.id, itemId), eq(orderItems.orderId, orderId)));
     if (!item) throw Object.assign(new Error("Order item not found"), { status: 404 });
@@ -618,7 +635,9 @@ export class DatabaseStorage implements IStorage {
 
     const [o] = await db.select().from(orders).where(eq(orders.id, orderId));
     if (!o) throw Object.assign(new Error("Order not found"), { status: 404 });
-    if (me.role === "salesman" && o.createdByUserId !== userId) throw Object.assign(new Error("Forbidden"), { status: 403 });
+    if (me.role === "salesman" && o.createdByUserId !== userId && !(await this.isSalesmanForCustomer(userId, o.customerId))) {
+      throw Object.assign(new Error("Forbidden"), { status: 403 });
+    }
 
     const [item] = await db.select().from(orderItems).where(and(eq(orderItems.id, itemId), eq(orderItems.orderId, orderId)));
     if (!item) throw Object.assign(new Error("Order item not found"), { status: 404 });

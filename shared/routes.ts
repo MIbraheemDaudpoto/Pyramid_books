@@ -265,7 +265,7 @@ export const api = {
       input: z
         .object({
           status: z
-            .enum(["draft", "confirmed", "shipped", "delivered", "cancelled"])
+            .enum(["draft", "confirmed", "shipped", "delivered", "finalized", "cancelled"])
             .or(z.string()),
         })
         .strict(),

@@ -65,6 +65,7 @@ export default function StoreOrders() {
                     confirmed: "bg-info text-white",
                     shipped: "bg-primary",
                     delivered: "bg-success",
+                    finalized: "bg-primary text-white",
                     cancelled: "bg-danger",
                   };
                   return (

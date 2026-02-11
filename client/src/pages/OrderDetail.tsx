@@ -7,7 +7,7 @@ import { useOrder, useUpdateOrderStatus } from "@/hooks/use-orders";
 import { useToast } from "@/hooks/use-toast";
 import { redirectToLogin } from "@/lib/auth-utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, PackageCheck, PackageSearch, Truck, XCircle, ClipboardCheck, Receipt, Download, Pencil, Trash2, Check, X } from "lucide-react";
+import { ArrowLeft, PackageCheck, PackageSearch, Truck, XCircle, ClipboardCheck, Receipt, Download, Pencil, Trash2, Check, X, CheckSquare } from "lucide-react";
 import { generateInvoicePDF } from "@/lib/invoice-pdf";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
@@ -17,19 +17,21 @@ function money(n: any) {
   return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(Number(n || 0));
 }
 
-const statuses = ["draft", "confirmed", "shipped", "delivered", "cancelled"] as const;
+const statuses = ["draft", "confirmed", "shipped", "delivered", "finalized", "cancelled"] as const;
 
 function statusBadge(status: string) {
   const tone =
     status === "delivered"
       ? { bg: "hsl(152 52% 42% / .14)", fg: "hsl(152 52% 42%)" }
-      : status === "cancelled"
-        ? { bg: "hsl(var(--destructive) / .14)", fg: "hsl(var(--destructive))" }
-        : status === "confirmed"
-          ? { bg: "hsl(var(--accent) / .14)", fg: "hsl(var(--accent))" }
-          : status === "shipped"
-            ? { bg: "hsl(var(--primary) / .14)", fg: "hsl(var(--primary))" }
-            : { bg: "hsl(var(--muted))", fg: "hsl(var(--muted-foreground))" };
+      : status === "finalized"
+        ? { bg: "hsl(210 60% 45% / .14)", fg: "hsl(210 60% 45%)" }
+        : status === "cancelled"
+          ? { bg: "hsl(var(--destructive) / .14)", fg: "hsl(var(--destructive))" }
+          : status === "confirmed"
+            ? { bg: "hsl(var(--accent) / .14)", fg: "hsl(var(--accent))" }
+            : status === "shipped"
+              ? { bg: "hsl(var(--primary) / .14)", fg: "hsl(var(--primary))" }
+              : { bg: "hsl(var(--muted))", fg: "hsl(var(--muted-foreground))" };
 
   return (
     <span
@@ -347,6 +349,18 @@ export default function OrderDetailPage() {
                 >
                   <XCircle className="w-4 h-4" />
                   Cancel
+                </button>
+              </div>
+
+              <div className="mt-3">
+                <button
+                  className="btn btn-success w-100 d-inline-flex align-items-center justify-content-center gap-2"
+                  onClick={() => setStatus("finalized")}
+                  disabled={statusMutation.isPending || data.status === "finalized"}
+                  data-testid="order-status-finalized"
+                >
+                  <CheckSquare className="w-4 h-4" />
+                  {data.status === "finalized" ? "Invoice Finalized" : "Finalize Invoice"}
                 </button>
               </div>
 

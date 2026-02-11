@@ -150,3 +150,7 @@ users, customers, books, orders, order_items, payments, stock_receipts, stock_re
 - Resend integration for email notifications (via Replit connector)
 - New order email notifications sent to assigned salesman and admin users when customer places order
 - Email utility: server/email.ts, notification triggered in checkout route
+- Salesman can now see orders placed by their assigned customers (not just orders they created)
+- Salesman can edit/delete items and update status on assigned customer orders
+- Added "finalized" order status — salesman/admin can finalize invoices with dedicated button
+- Customer orders list has direct Invoice download button
