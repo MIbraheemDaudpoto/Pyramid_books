@@ -396,7 +396,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const userId = getUserId(req);
       const input = api.orders.create.input.parse(req.body);
-      const created = await storage.createOrder(userId, input);
+      const created = await storage.createOrder(userId, {
+        ...input,
+        items: input.items.map((item: any) => ({
+          ...item,
+          unitPrice: String(item.unitPrice)
+        }))
+      } as any);
       res.status(201).json(created);
     } catch (err: any) {
       if (err instanceof z.ZodError) {
@@ -832,9 +838,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           receiptItems.push({
             bookId: match.id,
             qty: item.qty,
-            buyingPrice: item.buyingPrice,
-            companyDiscount: item.companyDiscount,
-          });
+            buyingPrice: String(item.buyingPrice),
+            companyDiscount: String(item.companyDiscount || 0),
+          } as any);
           totalItems++;
         }
 
@@ -1169,6 +1175,36 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const userId = getUserId(req);
       const conversations = await storage.listConversations(userId);
       res.json(conversations);
+    } catch (err: any) {
+      res.status(asStatus(err)).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.get("/api/messages/users", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const list = await storage.listChatUsers(userId);
+      res.json(list);
+    } catch (err: any) {
+      res.status(asStatus(err)).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.get("/api/messages/unread-count", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const count = await storage.getUnreadCount(userId);
+      res.json({ count });
+    } catch (err: any) {
+      res.status(asStatus(err)).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.post("/api/messages/:otherUserId/read", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      await storage.markAsRead(userId, req.params.otherUserId);
+      res.status(204).end();
     } catch (err: any) {
       res.status(asStatus(err)).json({ message: err.message || "Error" });
     }

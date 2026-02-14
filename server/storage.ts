@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import {
   books,
   customers,
@@ -141,7 +141,10 @@ export interface IStorage {
 
   listMessages(userId: string, otherUserId: string): Promise<Message[]>;
   sendMessage(senderId: string, receiverId: string, content: string): Promise<Message>;
-  listConversations(userId: string): Promise<Array<{ otherUser: any, lastMessage: Message }>>;
+  listConversations(userId: string): Promise<Array<{ otherUser: any, lastMessage: Message, unreadCount: number }>>;
+  listChatUsers(userId: string): Promise<User[]>;
+  markAsRead(userId: string, otherUserId: string): Promise<void>;
+  getUnreadCount(userId: string): Promise<number>;
   upsertUser(user: any): Promise<User>;
   seedIfEmpty(): Promise<void>;
 }
@@ -1124,7 +1127,7 @@ export class DatabaseStorage implements IStorage {
 
     const salesMap = new Map(salesRows.map(r => [r.label, r]));
     const stockMap = new Map(stockRows.map(r => [r.label, r]));
-    const allLabels = Array.from(new Set([...salesMap.keys(), ...stockMap.keys()])).sort();
+    const allLabels = Array.from(new Set([...Array.from(salesMap.keys()), ...Array.from(stockMap.keys())])).sort();
 
     const rows = allLabels.map(label => {
       const s = salesMap.get(label);
@@ -1731,9 +1734,12 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(messages)
       .where(
-        sql`(${messages.senderId} = ${userId} AND ${messages.receiverId} = ${otherUserId}) OR (${messages.senderId} = ${otherUserId} AND ${messages.receiverId} = ${userId})`
+        or(
+          and(eq(messages.senderId, userId), eq(messages.receiverId, otherUserId)),
+          and(eq(messages.senderId, otherUserId), eq(messages.receiverId, userId))
+        )
       )
-      .orderBy(messages.createdAt);
+      .orderBy(asc(messages.createdAt));
   }
 
   async sendMessage(senderId: string, receiverId: string, content: string): Promise<Message> {
@@ -1748,7 +1754,7 @@ export class DatabaseStorage implements IStorage {
     return msg;
   }
 
-  async listConversations(userId: string): Promise<Array<{ otherUser: any, lastMessage: Message }>> {
+  async listConversations(userId: string): Promise<Array<{ otherUser: any, lastMessage: Message, unreadCount: number }>> {
     const sent = await db.select({ id: messages.receiverId }).from(messages).where(eq(messages.senderId, userId));
     const received = await db.select({ id: messages.senderId }).from(messages).where(eq(messages.receiverId, userId));
     const userIds = Array.from(new Set([...sent.map(s => s.id), ...received.map(r => r.id)]));
@@ -1767,16 +1773,79 @@ export class DatabaseStorage implements IStorage {
         .select()
         .from(messages)
         .where(
-          sql`(${messages.senderId} = ${userId} AND ${messages.receiverId} = ${otherId}) OR (${messages.senderId} = ${otherId} AND ${messages.receiverId} = ${userId})`
+          or(
+            and(eq(messages.senderId, userId), eq(messages.receiverId, otherId)),
+            and(eq(messages.senderId, otherId), eq(messages.receiverId, userId))
+          )
         )
         .orderBy(desc(messages.createdAt))
         .limit(1);
 
+      const [{ count: unreadCount }] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.senderId, otherId),
+            eq(messages.receiverId, userId),
+            sql`${messages.readAt} IS NULL`
+          )
+        );
+
       if (otherUser && lastMsg) {
-        result.push({ otherUser, lastMessage: lastMsg });
+        result.push({ otherUser, lastMessage: lastMsg, unreadCount: Number(unreadCount) });
       }
     }
     return result.sort((a, b) => b.lastMessage.createdAt.getTime() - a.lastMessage.createdAt.getTime());
+  }
+
+  async listChatUsers(userId: string): Promise<User[]> {
+    const me = await this.getCurrentUser(userId);
+    if (!me) return [];
+
+    if (me.role === "customer") {
+      // Customers can chat with staff (admin/salesman)
+      return (await db.select().from(users).where(
+        and(
+          or(eq(users.role, "admin"), eq(users.role, "salesman")),
+          eq(users.isActive, true)
+        )
+      )) as User[];
+    } else {
+      // Staff can chat with everyone
+      return (await db.select().from(users).where(
+        and(
+          eq(users.isActive, true),
+          sql`${users.id} != ${userId}`
+        )
+      )) as User[];
+    }
+  }
+
+  async markAsRead(userId: string, otherUserId: string): Promise<void> {
+    await db
+      .update(messages)
+      .set({ readAt: new Date() })
+      .where(
+        and(
+          eq(messages.senderId, otherUserId),
+          eq(messages.receiverId, userId),
+          sql`${messages.readAt} IS NULL`
+        )
+      );
+  }
+
+  async getUnreadCount(userId: string): Promise<number> {
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.receiverId, userId),
+          sql`${messages.readAt} IS NULL`
+        )
+      );
+    return Number(count);
   }
 
   async upsertUser(userData: any): Promise<User> {

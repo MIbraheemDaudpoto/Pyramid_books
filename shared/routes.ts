@@ -518,6 +518,18 @@ export const api = {
       method: "GET" as const,
       path: "/api/messages/:otherUserId",
     },
+    chatUsers: {
+      method: "GET" as const,
+      path: "/api/messages/users",
+    },
+    unreadCount: {
+      method: "GET" as const,
+      path: "/api/messages/unread-count",
+    },
+    markRead: {
+      method: "POST" as const,
+      path: "/api/messages/:otherUserId/read",
+    },
     send: {
       method: "POST" as const,
       path: "/api/messages",
