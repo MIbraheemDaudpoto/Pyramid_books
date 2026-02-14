@@ -77,6 +77,7 @@ export interface IStorage {
     lowStock?: boolean;
   }): Promise<Book[]>;
   createBook(input: CreateBookRequest): Promise<Book>;
+  getBook(id: number): Promise<Book | undefined>;
   updateBook(id: number, updates: UpdateBookRequest): Promise<Book>;
   deleteBook(id: number): Promise<void>;
 
@@ -341,6 +342,11 @@ export class DatabaseStorage implements IStorage {
   async createBook(input: CreateBookRequest): Promise<Book> {
     const [created] = await db.insert(books).values(input).returning();
     return created;
+  }
+
+  async getBook(id: number): Promise<Book | undefined> {
+    const [b] = await db.select().from(books).where(eq(books.id, id));
+    return b;
   }
 
   async updateBook(id: number, updates: UpdateBookRequest): Promise<Book> {

@@ -32,6 +32,46 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(me);
   });
 
+  // Dynamic sitemap.xml
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const activeBooks = await storage.listBooks();
+      const baseUrl = "https://pyramid-books.onrender.com";
+      const lastMod = new Date().toISOString().split("T")[0];
+
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+      xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+
+      // Static pages
+      const staticPages = ["", "/store", "/store/school-lists"];
+      staticPages.forEach(path => {
+        xml += `  <url>\n`;
+        xml += `    <loc>${baseUrl}${path}</loc>\n`;
+        xml += `    <lastmod>${lastMod}</lastmod>\n`;
+        xml += `    <changefreq>daily</changefreq>\n`;
+        xml += `    <priority>${path === "" ? "1.0" : "0.8"}</priority>\n`;
+        xml += `  </url>\n`;
+      });
+
+      // Add individual book pages for SEO
+      activeBooks.forEach(book => {
+        xml += `  <url>\n`;
+        xml += `    <loc>${baseUrl}/store/books/${book.id}</loc>\n`;
+        xml += `    <lastmod>${lastMod}</lastmod>\n`;
+        xml += `    <changefreq>weekly</changefreq>\n`;
+        xml += `    <priority>0.6</priority>\n`;
+        xml += `  </url>\n`;
+      });
+
+      xml += `</urlset>`;
+
+      res.header("Content-Type", "application/xml");
+      res.send(xml);
+    } catch (err) {
+      res.status(500).send("Error generating sitemap");
+    }
+  });
+
   app.patch("/api/profile", isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
@@ -268,6 +308,27 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
       await storage.deleteCustomer(Number(req.params.id));
       res.status(204).send();
+    } catch (err: any) {
+      const status = asStatus(err);
+      res.status(status).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.get("/api/books/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const me = await storage.getCurrentUser(userId);
+      const book = await storage.getBook(Number(req.params.id));
+      if (!book) return res.status(404).json({ message: "Book not found" });
+
+      if (me?.role === "customer") {
+        const { buyingPrice, reorderLevel, ...rest } = book;
+        return res.json({
+          ...rest,
+          stockQty: book.stockQty > 0 ? 1 : 0,
+        });
+      }
+      res.json(book);
     } catch (err: any) {
       const status = asStatus(err);
       res.status(status).json({ message: err.message || "Error" });

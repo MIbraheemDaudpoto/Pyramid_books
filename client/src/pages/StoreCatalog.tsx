@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import type { Book } from "@shared/schema";
 import { BOOK_CATEGORIES } from "@shared/schema";
 import { useAddToCart } from "@/hooks/use-cart";
@@ -16,11 +17,13 @@ function BookCard({ book, onAdd, isPending }: { book: Book; onAdd: (b: Book) => 
   return (
     <GlassCard className="h-100 d-flex flex-column border-0 shadow-sm p-3 group hover:translate-y-[-4px] transition-all duration-300">
       <div className="flex-grow-1">
-        <div className="p-3 bg-light rounded-4 text-primary d-flex align-items-center justify-content-center mb-3" style={{ height: '140px' }}>
-          <BookOpen className="w-12 h-12 opacity-20" />
-        </div>
+        <Link href={`/store/books/${book.id}`} className="text-decoration-none">
+          <div className="p-3 bg-light rounded-4 text-primary d-flex align-items-center justify-content-center mb-3 transition-colors group-hover:bg-primary-subtle" style={{ height: '140px' }}>
+            <BookOpen className="w-12 h-12 opacity-20" />
+          </div>
 
-        <h6 className="fw-bold mb-1 text-dark" data-testid={`book-title-${book.id}`}>{book.title}</h6>
+          <h6 className="fw-bold mb-1 text-dark group-hover:text-primary transition-colors" data-testid={`book-title-${book.id}`}>{book.title}</h6>
+        </Link>
 
         <div className="vstack gap-1 mt-2">
           {book.author && (

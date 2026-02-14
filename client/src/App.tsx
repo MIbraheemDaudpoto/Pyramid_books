@@ -31,6 +31,7 @@ import StorePayments from "@/pages/StorePayments";
 import StoreProfile from "@/pages/StoreProfile";
 import StoreSchoolLists from "@/pages/StoreSchoolLists";
 import StoreOrderDetail from "@/pages/StoreOrderDetail";
+import StoreBookDetail from "@/pages/StoreBookDetail";
 import { useMe } from "@/hooks/use-me";
 
 function HomeGate() {
@@ -132,6 +133,11 @@ function Router() {
       <Route path="/store">
         <RequireRole roles={["customer"]}>
           <CustomerLayout><StoreCatalog /></CustomerLayout>
+        </RequireRole>
+      </Route>
+      <Route path="/store/books/:id">
+        <RequireRole roles={["customer"]}>
+          <CustomerLayout><StoreBookDetail /></CustomerLayout>
         </RequireRole>
       </Route>
       <Route path="/store/cart">
