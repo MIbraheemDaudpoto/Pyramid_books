@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /store/profile
+Disallow: /store/orders
+Disallow: /store/payments
+
+Sitemap: https://pyramid-books.onrender.com/sitemap.xml
