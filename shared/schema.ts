@@ -358,6 +358,26 @@ export const passwordResetTokens = pgTable(
 
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 
+// ===== Messages table =====
+export const messages = pgTable(
+  "messages",
+  {
+    id: serial("id").primaryKey(),
+    senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    receiverId: varchar("receiver_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    readAt: timestamp("read_at"),
+  },
+  (table) => [
+    index("IDX_messages_sender").on(table.senderId),
+    index("IDX_messages_receiver").on(table.receiverId),
+  ],
+);
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;
+
 // ===== Insert schemas =====
 export const insertCustomerSchema = createInsertSchema(customers).omit({
   id: true,

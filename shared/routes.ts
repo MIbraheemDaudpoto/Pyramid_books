@@ -508,6 +508,25 @@ export const api = {
       },
     },
   },
+
+  messages: {
+    conversations: {
+      method: "GET" as const,
+      path: "/api/messages/conversations",
+    },
+    list: {
+      method: "GET" as const,
+      path: "/api/messages/:otherUserId",
+    },
+    send: {
+      method: "POST" as const,
+      path: "/api/messages",
+      input: z.object({
+        receiverId: z.string().min(1),
+        content: z.string().min(1),
+      }).strict(),
+    },
+  },
 } as const;
 
 export function buildUrl(

@@ -1163,6 +1163,45 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // Chat/Messaging
+  app.get("/api/messages/conversations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const conversations = await storage.listConversations(userId);
+      res.json(conversations);
+    } catch (err: any) {
+      res.status(asStatus(err)).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.get("/api/messages/:otherUserId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const messages = await storage.listMessages(userId, req.params.otherUserId);
+      res.json(messages);
+    } catch (err: any) {
+      res.status(asStatus(err)).json({ message: err.message || "Error" });
+    }
+  });
+
+  app.post("/api/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const schema = z.object({
+        receiverId: z.string().min(1),
+        content: z.string().min(1),
+      });
+      const { receiverId, content } = schema.parse(req.body);
+      const msg = await storage.sendMessage(userId, receiverId, content);
+      res.status(201).json(msg);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(asStatus(err)).json({ message: err.message || "Error" });
+    }
+  });
+
   // Seed once on boot (safe to call repeatedly)
   await storage.seedIfEmpty();
 

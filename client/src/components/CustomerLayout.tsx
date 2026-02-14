@@ -10,6 +10,7 @@ import {
   Menu,
   X,
   GraduationCap,
+  MessageCircle,
 } from "lucide-react";
 import type { Role } from "@shared/schema";
 import { useMe } from "@/hooks/use-me";
@@ -33,6 +34,7 @@ export default function CustomerLayout(props: { children: React.ReactNode }) {
     { href: "/store/orders", label: "My Orders", icon: Receipt, testId: "nav-my-orders" },
     { href: "/store/payments", label: "My Payments", icon: CreditCard, testId: "nav-my-payments" },
     { href: "/store/school-lists", label: "School Lists", icon: GraduationCap, testId: "nav-school-lists" },
+    { href: "/store/messages", label: "Messages", icon: MessageCircle, testId: "nav-messages" },
     { href: "/store/profile", label: "My Account", icon: User, testId: "nav-my-profile" },
   ].filter((x) => (x as any).show !== false);
 

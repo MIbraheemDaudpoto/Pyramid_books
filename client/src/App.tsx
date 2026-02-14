@@ -21,6 +21,7 @@ import StockReceipts from "@/pages/StockReceipts";
 import Reports from "@/pages/Reports";
 import CsvImportExport from "@/pages/CsvImportExport";
 import DiscountRules from "@/pages/DiscountRules";
+import Messages from "@/pages/Messages";
 import RequireRole from "@/components/RequireRole";
 import CustomerLayout from "@/components/CustomerLayout";
 import StoreCatalog from "@/pages/StoreCatalog";
@@ -161,6 +162,17 @@ function Router() {
       <Route path="/store/school-lists">
         <RequireRole roles={["customer"]}>
           <CustomerLayout><StoreSchoolLists /></CustomerLayout>
+        </RequireRole>
+      </Route>
+      <Route path="/store/messages">
+        <RequireRole roles={["customer"]}>
+          <CustomerLayout><Messages /></CustomerLayout>
+        </RequireRole>
+      </Route>
+
+      <Route path="/messages">
+        <RequireRole roles={["admin", "salesman"]}>
+          <Messages />
         </RequireRole>
       </Route>
 

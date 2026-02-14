@@ -7,6 +7,7 @@ import {
   orders,
   passwordResetTokens,
   payments,
+  messages,
   schoolLists,
   schoolListItems,
   shoppingCart,
@@ -24,6 +25,8 @@ import {
   type CurrentUserResponse,
   type DashboardResponse,
   type DiscountRule,
+  type Message,
+  type InsertMessage,
   type OrderWithItemsResponse,
   type OrdersListResponse,
   type PasswordResetToken,
@@ -136,6 +139,10 @@ export interface IStorage {
   markTokenUsed(tokenId: number): Promise<void>;
   listPendingPasswordResets(): Promise<Array<{ id: number; token: string; userEmail: string | null; userName: string | null; expiresAt: Date; createdAt: Date }>>;
 
+  listMessages(userId: string, otherUserId: string): Promise<Message[]>;
+  sendMessage(senderId: string, receiverId: string, content: string): Promise<Message>;
+  listConversations(userId: string): Promise<Array<{ otherUser: any, lastMessage: Message }>>;
+  upsertUser(user: any): Promise<User>;
   seedIfEmpty(): Promise<void>;
 }
 
@@ -1077,7 +1084,7 @@ export class DatabaseStorage implements IStorage {
 
     const orderFilters: any[] = [gte(orders.orderDate, cutoff)];
     if (isSalesman) {
-      const assignedCustomers = await db.select({ id: customers.id }).from(customers).where(eq(customers.salesmanUserId, userId));
+      const assignedCustomers = await db.select({ id: customers.id }).from(customers).where(eq(customers.assignedSalesmanUserId, userId));
       const ids = assignedCustomers.map(c => c.id);
       if (ids.length > 0) {
         orderFilters.push(inArray(orders.customerId, ids));
@@ -1117,7 +1124,7 @@ export class DatabaseStorage implements IStorage {
 
     const salesMap = new Map(salesRows.map(r => [r.label, r]));
     const stockMap = new Map(stockRows.map(r => [r.label, r]));
-    const allLabels = [...new Set([...salesMap.keys(), ...stockMap.keys()])].sort();
+    const allLabels = Array.from(new Set([...salesMap.keys(), ...stockMap.keys()])).sort();
 
     const rows = allLabels.map(label => {
       const s = salesMap.get(label);
@@ -1717,6 +1724,74 @@ export class DatabaseStorage implements IStorage {
         });
       }
     }
+  }
+
+  async listMessages(userId: string, otherUserId: string): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(
+        sql`(${messages.senderId} = ${userId} AND ${messages.receiverId} = ${otherUserId}) OR (${messages.senderId} = ${otherUserId} AND ${messages.receiverId} = ${userId})`
+      )
+      .orderBy(messages.createdAt);
+  }
+
+  async sendMessage(senderId: string, receiverId: string, content: string): Promise<Message> {
+    const [msg] = await db
+      .insert(messages)
+      .values({
+        senderId,
+        receiverId,
+        content,
+      })
+      .returning();
+    return msg;
+  }
+
+  async listConversations(userId: string): Promise<Array<{ otherUser: any, lastMessage: Message }>> {
+    const sent = await db.select({ id: messages.receiverId }).from(messages).where(eq(messages.senderId, userId));
+    const received = await db.select({ id: messages.senderId }).from(messages).where(eq(messages.receiverId, userId));
+    const userIds = Array.from(new Set([...sent.map(s => s.id), ...received.map(r => r.id)]));
+
+    const result = [];
+    for (const otherId of userIds) {
+      const [otherUser] = await db.select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+      }).from(users).where(eq(users.id, otherId));
+
+      const [lastMsg] = await db
+        .select()
+        .from(messages)
+        .where(
+          sql`(${messages.senderId} = ${userId} AND ${messages.receiverId} = ${otherId}) OR (${messages.senderId} = ${otherId} AND ${messages.receiverId} = ${userId})`
+        )
+        .orderBy(desc(messages.createdAt))
+        .limit(1);
+
+      if (otherUser && lastMsg) {
+        result.push({ otherUser, lastMessage: lastMsg });
+      }
+    }
+    return result.sort((a, b) => b.lastMessage.createdAt.getTime() - a.lastMessage.createdAt.getTime());
+  }
+
+  async upsertUser(userData: any): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user as User;
   }
 
   async seedIfEmpty(): Promise<void> {
