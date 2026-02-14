@@ -7,6 +7,7 @@ import { useAddToCart } from "@/hooks/use-cart";
 import { useToast } from "@/hooks/use-toast";
 import GlassCard from "@/components/GlassCard";
 import SectionHeader from "@/components/SectionHeader";
+import Seo from "@/components/Seo";
 import EmptyState from "@/components/EmptyState";
 import { Search, ShoppingCart, BookOpen, Filter, User, Hash, Building, Tag, CheckCircle2, XCircle } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
@@ -101,6 +102,10 @@ export default function StoreCatalog() {
 
   return (
     <div>
+      <Seo
+        title="Browse Books | Pyramid Books Hyderabad Online Store"
+        description="Shop online books in Hyderabad. Explore school course books, stories, and novels with fast delivery from Pyramid Books."
+      />
       <SectionHeader
         title="Browse Catalog"
         subtitle="Explore our collection of educational and literature titles."

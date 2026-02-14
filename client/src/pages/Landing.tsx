@@ -6,8 +6,8 @@ export default function Landing() {
   return (
     <div className="app-atmosphere" style={{ minHeight: "100vh" }}>
       <Seo
-        title="Pyramid Books — Distribution Console"
-        description="A premium, role-based distribution management system for books: inventory, customers, orders, and payments."
+        title="Pyramid Books | Best Online Bookstore in Hyderabad"
+        description="Buy books online at Pyramid Books Hyderabad. School course books, story books, novels and fast delivery across Hyderabad."
       />
 
       <div className="container-fluid px-3 px-md-4 px-lg-5">
@@ -52,12 +52,13 @@ export default function Landing() {
               </div>
 
               <h1 className="mt-3 mb-3" style={{ fontSize: "clamp(2.2rem, 1.5rem + 2.4vw, 3.6rem)" }}>
-                Run distribution like a <span style={{ color: "hsl(var(--primary))" }}>well-stacked pyramid</span>.
+                Your Favorite <span style={{ color: "hsl(var(--primary))" }}>Online Bookstore in Hyderabad</span>.
               </h1>
 
               <p className="text-muted" style={{ fontSize: 18, lineHeight: 1.6, maxWidth: 620 }}>
-                Inventory you can trust. Orders that move cleanly from draft to delivery. Payments recorded with clarity.
-                Built for super admins, sales teams, and customers—without the chaos.
+                Discover a wide collection of <strong>online books</strong> at Pyramid Books.
+                Whether you're looking for <strong>school course books</strong>, novels, or educational resources,
+                we are the premier destination for <strong>books in Hyderabad</strong> with reliable fast delivery.
               </p>
 
               <div className="d-flex flex-column flex-sm-row gap-2 mt-4">
@@ -185,7 +186,7 @@ export default function Landing() {
               </div>
 
               <div className="text-muted small mt-4">
-                © {new Date().getFullYear()} Pyramid Books • Secure sessions • Role-based access
+                © {new Date().getFullYear()} Pyramid Books • The Best Online Bookstore in Hyderabad • Secure sessions • Role-based access
               </div>
             </div>
           </div>
