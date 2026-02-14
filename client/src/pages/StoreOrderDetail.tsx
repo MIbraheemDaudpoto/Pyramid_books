@@ -1,41 +1,36 @@
-import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { buildUrl } from "@shared/routes";
-import type { OrderWithItemsResponse } from "@shared/schema";
+import { useOrder } from "@/hooks/use-orders";
 import GlassCard from "@/components/GlassCard";
 import SectionHeader from "@/components/SectionHeader";
-import { ArrowLeft, Download, FileText } from "lucide-react";
+import { ArrowLeft, Download, FileText, Package, Calendar, Tag, Info } from "lucide-react";
 import { generateInvoicePDF } from "@/lib/invoice-pdf";
+import { useToast } from "@/hooks/use-toast";
+import { redirectToLogin } from "@/lib/auth-utils";
+import { useEffect } from "react";
+import { formatCurrency, cn } from "@/lib/utils";
 
-function money(n: any) {
-  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(Number(n || 0));
-}
+const statusConfig: Record<string, { color: string; icon: any }> = {
+  pending: { color: "bg-warning text-dark", icon: Package },
+  draft: { color: "bg-secondary text-white", icon: FileText },
+  confirmed: { color: "bg-info text-white", icon: Info },
+  shipped: { color: "bg-primary text-white", icon: Package },
+  delivered: { color: "bg-success text-white", icon: Package },
+  finalized: { color: "bg-primary text-white", icon: FileText },
+  cancelled: { color: "bg-danger text-white", icon: Tag },
+};
 
 export default function StoreOrderDetail() {
   const [, params] = useRoute("/store/orders/:id");
   const id = Number(params?.id);
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
-  const { data, isLoading, error } = useQuery<OrderWithItemsResponse>({
-    queryKey: ["/api/orders", id],
-    queryFn: async () => {
-      const url = buildUrl("/api/orders/:id", { id });
-      const res = await fetch(url, { credentials: "include" });
-      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-      return res.json();
-    },
-    enabled: !!id,
-  });
+  const { data, isLoading, error } = useOrder(id);
 
-  const statusColors: Record<string, string> = {
-    pending: "bg-warning text-dark",
-    draft: "bg-secondary",
-    confirmed: "bg-info text-white",
-    shipped: "bg-primary",
-    delivered: "bg-success",
-    finalized: "bg-primary text-white",
-    cancelled: "bg-danger",
-  };
+  useEffect(() => {
+    const msg = (error as Error | undefined)?.message || "";
+    if (/^401:/.test(msg)) redirectToLogin(toast);
+  }, [error, toast]);
 
   if (isLoading) {
     return (
@@ -49,43 +44,60 @@ export default function StoreOrderDetail() {
 
   if (error || !data) {
     return (
-      <div>
+      <div className="container py-4">
         <SectionHeader title="Order Not Found" subtitle="This order could not be loaded." />
-        <div className="alert alert-warning">
-          {error ? (error as Error).message : "Order not found."}
-        </div>
-        <button className="btn btn-outline-primary" onClick={() => setLocation("/store/orders")} data-testid="back-to-orders">
-          <ArrowLeft style={{ width: 16, height: 16 }} className="me-1" />
-          Back to Orders
-        </button>
+        <GlassCard className="text-center py-5 mt-4">
+          <div className="mb-4">
+            <Package className="w-16 h-16 text-muted mx-auto opacity-20" />
+          </div>
+          <h4 className="fw-bold">We couldn't find that order</h4>
+          <p className="text-muted mb-4">{error ? (error as Error).message : "The order ID might be incorrect or you don't have permission to view it."}</p>
+          <button className="btn btn-primary" onClick={() => setLocation("/store/orders")}>
+            <ArrowLeft className="w-4 h-4 me-2" />
+            Back to Orders
+          </button>
+        </GlassCard>
       </div>
     );
   }
 
   const discountPct = Number(data.discountPercentage || 0);
+  const currentStatus = data.status ?? "pending";
+  const { color: statusColor, icon: StatusIcon } = statusConfig[currentStatus] || statusConfig.pending;
 
   return (
-    <div>
+    <div className="pb-5">
       <SectionHeader
         title={`Order #${data.orderNo}`}
-        subtitle={`Placed on ${data.orderDate ? new Date(data.orderDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "-"}`}
+        subtitle={
+          <div className="d-flex align-items-center gap-3 mt-1">
+            <span className="d-inline-flex align-items-center gap-1">
+              <Calendar className="w-3 h-3 text-muted" />
+              {data.orderDate ? new Date(data.orderDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "-"}
+            </span>
+            <span className={cn("badge rounded-pill d-inline-flex align-items-center gap-1 px-2 py-1", statusColor)}>
+              <StatusIcon className="w-3 h-3" />
+              {currentStatus.toUpperCase()}
+            </span>
+          </div>
+        }
         right={
           <div className="d-flex flex-wrap gap-2">
             <button
-              className="btn btn-outline-primary d-inline-flex align-items-center gap-2"
+              className="btn btn-outline-primary border-2 d-inline-flex align-items-center gap-2"
               onClick={() => setLocation("/store/orders")}
               data-testid="back-to-orders"
             >
-              <ArrowLeft style={{ width: 16, height: 16 }} />
+              <ArrowLeft className="w-4 h-4" />
               Back
             </button>
             <button
-              className="btn btn-primary pb-sheen d-inline-flex align-items-center gap-2"
+              className="btn btn-primary pb-sheen d-inline-flex align-items-center gap-2 px-4 shadow-sm"
               onClick={() => generateInvoicePDF(data)}
               data-testid="download-invoice-btn"
             >
-              <Download style={{ width: 16, height: 16 }} />
-              Download Invoice
+              <Download className="w-4 h-4" />
+              Invoice
             </button>
           </div>
         }
@@ -93,45 +105,44 @@ export default function StoreOrderDetail() {
 
       <div className="row g-4">
         <div className="col-lg-8">
-          <GlassCard>
-            <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
+          <GlassCard className="overflow-hidden border-0 shadow-sm">
+            <div className="card-header bg-transparent border-0 px-4 py-3">
               <h6 className="fw-bold mb-0">Order Items</h6>
-              <span className={`badge ${statusColors[data.status ?? "pending"] ?? "bg-secondary"}`} data-testid="order-status-badge">
-                {data.status ?? "pending"}
-              </span>
             </div>
 
             <div className="table-responsive">
-              <table className="table table-hover mb-0" data-testid="order-items-table">
-                <thead>
+              <table className="table table-hover align-middle mb-0" data-testid="order-items-table">
+                <thead className="bg-light">
                   <tr>
-                    <th>#</th>
-                    <th>Book</th>
-                    <th className="text-center">Qty</th>
-                    <th className="text-end">Unit Price</th>
-                    {discountPct > 0 && <th className="text-end">Discount</th>}
-                    <th className="text-end">Line Total</th>
+                    <th className="px-4 py-3 border-0 text-muted small text-uppercase fw-bold">#</th>
+                    <th className="py-3 border-0 text-muted small text-uppercase fw-bold">Book Title</th>
+                    <th className="py-3 border-0 text-muted small text-uppercase fw-bold text-center">Qty</th>
+                    <th className="py-3 border-0 text-muted small text-uppercase fw-bold text-end">Unit Price</th>
+                    {discountPct > 0 && <th className="py-3 border-0 text-muted small text-uppercase fw-bold text-end">Discount</th>}
+                    <th className="px-4 py-3 border-0 text-muted small text-uppercase fw-bold text-end">Line Total</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="border-top-0">
                   {data.items.map((item, idx) => {
                     const unitPrice = Number(item.unitPrice);
                     const discountAmount = discountPct > 0 ? (unitPrice * item.qty * discountPct) / 100 : 0;
                     return (
-                      <tr key={item.id} data-testid={`order-item-row-${item.id}`}>
-                        <td className="text-muted">{idx + 1}</td>
-                        <td>
-                          <div className="fw-semibold">{item.book.title}</div>
+                      <tr key={item.id} data-testid={`order-item-row-${item.id}`} className="border-bottom-0">
+                        <td className="px-4 py-3 text-muted">{idx + 1}</td>
+                        <td className="py-3">
+                          <div className="fw-bold text-dark">{item.book.title}</div>
                           {item.book.author && <div className="text-muted small">{item.book.author}</div>}
                         </td>
-                        <td className="text-center">{item.qty}</td>
-                        <td className="text-end">{money(unitPrice)}</td>
+                        <td className="py-3 text-center">
+                          <span className="badge bg-light text-dark border fw-normal px-2 py-1">{item.qty}</span>
+                        </td>
+                        <td className="py-3 text-end">{formatCurrency(unitPrice)}</td>
                         {discountPct > 0 && (
-                          <td className="text-end text-success" data-testid={`order-item-discount-${item.id}`}>
-                            {discountPct}% (-{money(discountAmount)})
+                          <td className="py-3 text-end text-success fw-medium" data-testid={`order-item-discount-${item.id}`}>
+                            {discountPct}% <span className="d-block small text-muted">(-{formatCurrency(discountAmount)})</span>
                           </td>
                         )}
-                        <td className="text-end fw-semibold">{money(item.lineTotal)}</td>
+                        <td className="px-4 py-3 text-end fw-bold text-primary">{formatCurrency(item.lineTotal)}</td>
                       </tr>
                     );
                   })}
@@ -140,56 +151,77 @@ export default function StoreOrderDetail() {
             </div>
 
             {data.notes && (
-              <div className="mt-3 p-3 bg-light rounded-3">
-                <div className="text-muted small fw-bold">Order Notes</div>
-                <div className="mt-1 small">{data.notes}</div>
+              <div className="m-4 p-4 bg-light rounded-4 border-start border-4 border-primary">
+                <div className="d-flex align-items-center gap-2 text-primary fw-bold mb-2">
+                  <Info className="w-4 h-4" />
+                  <span>Order Notes</span>
+                </div>
+                <div className="text-muted">{data.notes}</div>
               </div>
             )}
           </GlassCard>
         </div>
 
         <div className="col-lg-4">
-          <GlassCard>
-            <h6 className="fw-bold mb-3">Order Summary</h6>
+          <GlassCard className="border-0 shadow-sm sticky-top" style={{ top: '1rem' }}>
+            <h6 className="fw-bold mb-4 d-flex align-items-center gap-2">
+              <FileText className="w-4 h-4 text-primary" />
+              Order Summary
+            </h6>
 
-            <div className="d-flex justify-content-between gap-2 mb-2">
-              <span className="text-muted">Subtotal</span>
-              <span className="fw-semibold">{money(data.subtotal)}</span>
-            </div>
-
-            {discountPct > 0 && (
-              <div className="d-flex justify-content-between gap-2 mb-2">
-                <span className="text-muted">Discount ({discountPct}%)</span>
-                <span className="fw-semibold text-success">-{money(data.discount)}</span>
+            <div className="vstack gap-3">
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="text-muted">Subtotal</span>
+                <span className="fw-semibold">{formatCurrency(data.subtotal)}</span>
               </div>
-            )}
 
-            {Number(data.tax) > 0 && (
-              <div className="d-flex justify-content-between gap-2 mb-2">
-                <span className="text-muted">Tax</span>
-                <span className="fw-semibold">{money(data.tax)}</span>
+              {discountPct > 0 && (
+                <div className="d-flex justify-content-between align-items-center">
+                  <span className="text-muted d-flex align-items-center gap-1">
+                    Discount <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill">{discountPct}%</span>
+                  </span>
+                  <span className="fw-bold text-success">-{formatCurrency(data.discount)}</span>
+                </div>
+              )}
+
+              {Number(data.tax) > 0 && (
+                <div className="d-flex justify-content-between align-items-center">
+                  <span className="text-muted">Tax</span>
+                  <span className="fw-semibold">{formatCurrency(data.tax)}</span>
+                </div>
+              )}
+
+              <div className="my-1 border-top border-dashed"></div>
+
+              <div className="d-flex justify-content-between align-items-end">
+                <div>
+                  <div className="fw-bold text-dark">Grand Total</div>
+                  <div className="text-muted small">Including all taxes & discounts</div>
+                </div>
+                <div className="text-end">
+                  <span className="fw-bold fs-3 text-primary d-block" data-testid="order-total" style={{ letterSpacing: '-0.5px' }}>
+                    {formatCurrency(data.total)}
+                  </span>
+                </div>
               </div>
-            )}
 
-            <hr />
+              <div className="alert alert-info border-0 rounded-4 p-3 mb-0 mt-2 d-flex gap-3 shadow-none bg-info-subtle">
+                <Info className="w-5 h-5 text-info shrink-0 mt-1" />
+                <div className="small text-info-emphasis opacity-90">
+                  <strong className="d-block mb-1">Price Disclaimer</strong>
+                  Final pricing will be confirmed after internal review. If you have any questions, please contact support.
+                </div>
+              </div>
 
-            <div className="d-flex justify-content-between gap-2 mb-3">
-              <span className="fw-bold">Total</span>
-              <span className="fw-bold fs-5 text-primary" data-testid="order-total">{money(data.total)}</span>
+              <button
+                className="btn btn-primary pb-sheen w-100 py-3 rounded-4 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 mt-2"
+                onClick={() => generateInvoicePDF(data)}
+                data-testid="download-invoice-btn-sidebar"
+              >
+                <Download className="w-5 h-5" />
+                Download PDF Invoice
+              </button>
             </div>
-
-            <div className="alert alert-info small mb-3" data-testid="discount-disclaimer">
-              Discount is given by only Company, so this is not the final bill. Final pricing will be confirmed after order review.
-            </div>
-
-            <button
-              className="btn btn-primary pb-sheen w-100 d-inline-flex align-items-center justify-content-center gap-2"
-              onClick={() => generateInvoicePDF(data)}
-              data-testid="download-invoice-btn-sidebar"
-            >
-              <FileText style={{ width: 16, height: 16 }} />
-              Download Invoice (PDF)
-            </button>
           </GlassCard>
         </div>
       </div>

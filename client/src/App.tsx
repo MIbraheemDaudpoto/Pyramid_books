@@ -56,59 +56,6 @@ function HomeGate() {
   return <Dashboard />;
 }
 
-function AdminRoutes() {
-  return (
-    <RequireRole roles={["admin", "salesman"]}>
-      <Switch>
-        <Route path="/dashboard" component={Dashboard} />
-        <Route path="/books" component={Books} />
-        <Route path="/customers" component={Customers} />
-        <Route path="/orders" component={OrdersList} />
-        <Route path="/orders/new" component={OrderCreate} />
-        <Route path="/orders/:id" component={OrderDetail} />
-        <Route path="/payments" component={Payments} />
-        <Route path="/users">
-          <RequireRole roles={["admin"]}>
-            <Users />
-          </RequireRole>
-        </Route>
-        <Route path="/stock" component={StockReceipts} />
-        <Route path="/reports" component={Reports} />
-        <Route path="/csv">
-          <RequireRole roles={["admin", "salesman"]}>
-            <CsvImportExport />
-          </RequireRole>
-        </Route>
-        <Route path="/discounts">
-          <RequireRole roles={["admin"]}>
-            <DiscountRules />
-          </RequireRole>
-        </Route>
-        <Route component={NotFound} />
-      </Switch>
-    </RequireRole>
-  );
-}
-
-function CustomerRoutes() {
-  return (
-    <RequireRole roles={["customer"]}>
-      <CustomerLayout>
-        <Switch>
-          <Route path="/store" component={StoreCatalog} />
-          <Route path="/store/cart" component={StoreCart} />
-          <Route path="/store/orders" component={StoreOrders} />
-          <Route path="/store/orders/:id" component={StoreOrderDetail} />
-          <Route path="/store/payments" component={StorePayments} />
-          <Route path="/store/profile" component={StoreProfile} />
-          <Route path="/store/school-lists" component={StoreSchoolLists} />
-          <Route component={NotFound} />
-        </Switch>
-      </CustomerLayout>
-    </RequireRole>
-  );
-}
-
 function Router() {
   return (
     <Switch>
@@ -117,9 +64,107 @@ function Router() {
       <Route path="/signup" component={Signup} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
-      <Route path="/store/:rest*" component={CustomerRoutes} />
-      <Route path="/store" component={CustomerRoutes} />
-      <Route path="/:rest*" component={AdminRoutes} />
+
+      {/* Admin/Salesman Routes */}
+      <Route path="/dashboard">
+        <RequireRole roles={["admin", "salesman"]}>
+          <Dashboard />
+        </RequireRole>
+      </Route>
+      <Route path="/books">
+        <RequireRole roles={["admin", "salesman"]}>
+          <Books />
+        </RequireRole>
+      </Route>
+      <Route path="/customers">
+        <RequireRole roles={["admin", "salesman"]}>
+          <Customers />
+        </RequireRole>
+      </Route>
+      <Route path="/orders/new">
+        <RequireRole roles={["admin", "salesman"]}>
+          <OrderCreate />
+        </RequireRole>
+      </Route>
+      <Route path="/orders/:id">
+        <RequireRole roles={["admin", "salesman"]}>
+          <OrderDetail />
+        </RequireRole>
+      </Route>
+      <Route path="/orders">
+        <RequireRole roles={["admin", "salesman"]}>
+          <OrdersList />
+        </RequireRole>
+      </Route>
+      <Route path="/payments">
+        <RequireRole roles={["admin", "salesman"]}>
+          <Payments />
+        </RequireRole>
+      </Route>
+      <Route path="/users">
+        <RequireRole roles={["admin"]}>
+          <Users />
+        </RequireRole>
+      </Route>
+      <Route path="/stock">
+        <RequireRole roles={["admin", "salesman"]}>
+          <StockReceipts />
+        </RequireRole>
+      </Route>
+      <Route path="/reports">
+        <RequireRole roles={["admin", "salesman"]}>
+          <Reports />
+        </RequireRole>
+      </Route>
+      <Route path="/csv">
+        <RequireRole roles={["admin", "salesman"]}>
+          <CsvImportExport />
+        </RequireRole>
+      </Route>
+      <Route path="/discounts">
+        <RequireRole roles={["admin"]}>
+          <DiscountRules />
+        </RequireRole>
+      </Route>
+
+      {/* Customer Routes */}
+      <Route path="/store">
+        <RequireRole roles={["customer"]}>
+          <CustomerLayout><StoreCatalog /></CustomerLayout>
+        </RequireRole>
+      </Route>
+      <Route path="/store/cart">
+        <RequireRole roles={["customer"]}>
+          <CustomerLayout><StoreCart /></CustomerLayout>
+        </RequireRole>
+      </Route>
+      <Route path="/store/orders">
+        <RequireRole roles={["customer"]}>
+          <CustomerLayout><StoreOrders /></CustomerLayout>
+        </RequireRole>
+      </Route>
+      <Route path="/store/orders/:id">
+        <RequireRole roles={["customer"]}>
+          <CustomerLayout><StoreOrderDetail /></CustomerLayout>
+        </RequireRole>
+      </Route>
+      <Route path="/store/payments">
+        <RequireRole roles={["customer"]}>
+          <CustomerLayout><StorePayments /></CustomerLayout>
+        </RequireRole>
+      </Route>
+      <Route path="/store/profile">
+        <RequireRole roles={["customer"]}>
+          <CustomerLayout><StoreProfile /></CustomerLayout>
+        </RequireRole>
+      </Route>
+      <Route path="/store/school-lists">
+        <RequireRole roles={["customer"]}>
+          <CustomerLayout><StoreSchoolLists /></CustomerLayout>
+        </RequireRole>
+      </Route>
+
+      <Route component={NotFound} />
     </Switch>
   );
 }

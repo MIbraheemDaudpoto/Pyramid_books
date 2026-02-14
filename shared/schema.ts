@@ -416,20 +416,20 @@ export type SchoolListItem = typeof schoolListItems.$inferSelect;
 // ===== API request/response types =====
 export type CurrentUserResponse =
   | (Pick<
-      User,
-      | "id"
-      | "email"
-      | "firstName"
-      | "lastName"
-      | "phone"
-      | "profileImageUrl"
-      | "profileType"
-      | "companyName"
-      | "taxNumber"
-      | "address"
-      | "role"
-      | "isActive"
-    > & { customerId?: number | null })
+    User,
+    | "id"
+    | "email"
+    | "firstName"
+    | "lastName"
+    | "phone"
+    | "profileImageUrl"
+    | "profileType"
+    | "companyName"
+    | "taxNumber"
+    | "address"
+    | "role"
+    | "isActive"
+  > & { customerId?: number | null })
   | null;
 
 export type CreateCustomerRequest = InsertCustomer;
@@ -470,7 +470,7 @@ export interface OrderWithItemsResponse extends Order {
       book: Pick<Book, "id" | "title" | "isbn" | "author" | "unitPrice">;
     }
   >;
-  customer: Pick<Customer, "id" | "name" | "customerType" | "phone" | "email">;
+  customer: Pick<Customer, "id" | "name" | "customerType" | "phone" | "email" | "address">;
   createdBy: Pick<User, "id" | "email" | "firstName" | "lastName" | "role">;
 }
 

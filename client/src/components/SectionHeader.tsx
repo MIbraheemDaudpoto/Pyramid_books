@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 
 export default function SectionHeader(props: {
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   right?: ReactNode;
   badge?: ReactNode;
   testId?: string;

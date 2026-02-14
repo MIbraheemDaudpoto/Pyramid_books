@@ -6,51 +6,66 @@ import { useDashboard } from "@/hooks/use-dashboard";
 import { useMe } from "@/hooks/use-me";
 import { useToast } from "@/hooks/use-toast";
 import { redirectToLogin } from "@/lib/auth-utils";
-import { Activity, BookOpen, CreditCard, PackageSearch, Receipt, Users } from "lucide-react";
+import { Activity, BookOpen, CreditCard, PackageSearch, Receipt, Users, ArrowRight, TrendingUp, Clock, CheckCircle, XCircle } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { Link } from "wouter";
+import { formatCurrency, cn } from "@/lib/utils";
 
-function formatMoney(n: number) {
-  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(n || 0);
+const statusConfig: Record<string, { tone: { bg: string; fg: string } }> = {
+  pending: { tone: { bg: "hsl(var(--muted))", fg: "hsl(var(--muted-foreground))" } },
+  draft: { tone: { bg: "hsl(var(--muted))", fg: "hsl(var(--muted-foreground))" } },
+  confirmed: { tone: { bg: "hsl(var(--accent) / .14)", fg: "hsl(var(--accent))" } },
+  shipped: { tone: { bg: "hsl(var(--primary) / .14)", fg: "hsl(var(--primary))" } },
+  delivered: { tone: { bg: "hsl(152 52% 42% / .14)", fg: "hsl(152 52% 42%)" } },
+  finalized: { tone: { bg: "hsl(210 60% 45% / .14)", fg: "hsl(210 60% 45%)" } },
+  cancelled: { tone: { bg: "hsl(var(--destructive) / .14)", fg: "hsl(var(--destructive))" } },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const config = statusConfig[status] || statusConfig.pending;
+  return (
+    <span
+      className="badge rounded-pill d-inline-flex align-items-center px-2 py-1 border"
+      style={{ background: config.tone.bg, color: config.tone.fg, borderColor: "hsl(var(--border))", fontSize: '0.65rem' }}
+    >
+      <span className="text-uppercase fw-bold" style={{ letterSpacing: '0.3px' }}>{status}</span>
+    </span>
+  );
 }
 
-function KpiCard(props: { title: string; value: string; icon: React.ReactNode; hint?: string; tone?: "primary" | "accent" | "good" }) {
-  const tone = props.tone ?? "primary";
-  const color =
-    tone === "primary" ? "hsl(var(--primary))" : tone === "accent" ? "hsl(var(--accent))" : "hsl(152 52% 42%)";
+function KpiCard({ title, value, icon, hint, tone = "primary" }: { title: string; value: string; icon: React.ReactNode; hint?: string; tone?: "primary" | "accent" | "good" }) {
+  const color = tone === "primary" ? "hsl(var(--primary))" : tone === "accent" ? "hsl(var(--accent))" : "hsl(152 52% 42%)";
+  const bg = tone === "primary" ? "hsl(var(--primary) / 0.05)" : tone === "accent" ? "hsl(var(--accent) / 0.05)" : "hsl(152 52% 42% / 0.05)";
 
   return (
-    <div
-      className="rounded-4 p-3 p-md-4 h-100"
-      style={{
-        background: "linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card)) 100%)",
-        border: "1px solid hsl(var(--border) / 1)",
-        boxShadow: "var(--shadow-soft)",
-        transition: "transform 260ms ease, box-shadow 260ms ease, border-color 260ms ease",
-      }}
-    >
-      <div className="d-flex align-items-start justify-content-between gap-3">
-        <div className="flex-grow-1">
-          <div className="text-muted small">{props.title}</div>
-          <div className="mt-2 fw-bold" style={{ fontSize: 28, letterSpacing: "-0.02em" }}>
-            {props.value}
+    <GlassCard className="h-100 border-0 shadow-sm p-4 group hover:translate-y-[-2px] transition-all duration-300">
+      <div className="d-flex align-items-start justify-content-between">
+        <div>
+          <div className="text-muted small fw-medium mb-1">{title}</div>
+          <div className="fw-black text-dark leading-tight" style={{ fontSize: '2rem', letterSpacing: '-0.03em' }}>
+            {value}
           </div>
-          {props.hint && <div className="text-muted small mt-1">{props.hint}</div>}
+          {hint && (
+            <div className="d-flex align-items-center gap-1 mt-2 text-muted small">
+              <TrendingUp className="w-3 h-3 text-success" />
+              <span>{hint}</span>
+            </div>
+          )}
         </div>
         <div
-          className="rounded-4 d-inline-flex align-items-center justify-content-center"
+          className="rounded-4 d-flex align-items-center justify-content-center shrink-0"
           style={{
-            width: 48,
-            height: 48,
-            background: `linear-gradient(135deg, ${color} 0%, rgba(255,255,255,.0) 140%)`,
-            border: "1px solid hsl(var(--border) / 1)",
+            width: '52px',
+            height: '52px',
+            background: bg,
+            color: color,
+            border: `1px solid ${color}20`
           }}
-          aria-hidden="true"
         >
-          <div style={{ color }}>{props.icon}</div>
+          {icon}
         </div>
       </div>
-    </div>
+    </GlassCard>
   );
 }
 
@@ -67,7 +82,7 @@ export default function Dashboard() {
   const greeting = useMemo(() => {
     if (!me) return "Welcome back";
     const name = (me.firstName || me.lastName) ? `${me.firstName ?? ""} ${me.lastName ?? ""}`.trim() : (me.email ?? "there");
-    return `Welcome, ${name}`;
+    return `Welcome back, ${name}`;
   }, [me]);
 
   return (
@@ -76,138 +91,119 @@ export default function Dashboard() {
 
       <SectionHeader
         title={greeting}
-        subtitle="A quick scan of stock, customers, orders, and cashflow—tailored by role."
+        subtitle="Here's a quick glimpse of your business activity and key performance indicators."
         right={
           <div className="d-flex flex-wrap gap-2">
-            <Link href="/orders" className="btn btn-outline-primary" data-testid="dashboard-go-orders">
+            <Link href="/orders" className="btn btn-outline-primary shadow-sm" data-testid="dashboard-go-orders">
               <Receipt className="w-4 h-4 me-2" />
-              Orders
+              Manage Orders
             </Link>
-            <Link href="/books" className="btn btn-primary pb-sheen" data-testid="dashboard-go-books">
+            <Link href="/books" className="btn btn-primary pb-sheen shadow-sm" data-testid="dashboard-go-books">
               <BookOpen className="w-4 h-4 me-2" />
-              Books
+              Update Catalog
             </Link>
           </div>
         }
       />
 
-      <div className="row g-3 g-lg-4">
+      <div className="row g-4 mt-1">
         <div className="col-12 col-md-6 col-xl-3">
           <KpiCard
-            title="Books in catalog"
+            title="Total Catalog"
             value={isLoading ? "—" : String(data?.kpis.booksCount ?? 0)}
-            hint="Active titles tracked"
-            icon={<BookOpen className="w-5 h-5" />}
+            hint="Active listings"
+            icon={<BookOpen className="w-6 h-6" />}
             tone="accent"
           />
         </div>
         <div className="col-12 col-md-6 col-xl-3">
           <KpiCard
-            title="Low stock alerts"
+            title="Short Inventory"
             value={isLoading ? "—" : String(data?.kpis.lowStockCount ?? 0)}
-            hint="Below reorder level"
-            icon={<PackageSearch className="w-5 h-5" />}
+            hint="Requires attention"
+            icon={<PackageSearch className="w-6 h-6" />}
             tone="primary"
           />
         </div>
         <div className="col-12 col-md-6 col-xl-3">
           <KpiCard
-            title="Customers"
+            title="Registered Users"
             value={isLoading ? "—" : String(data?.kpis.customersCount ?? 0)}
-            hint="Active accounts"
-            icon={<Users className="w-5 h-5" />}
+            hint="Customer base"
+            icon={<Users className="w-6 h-6" />}
             tone="good"
           />
         </div>
         <div className="col-12 col-md-6 col-xl-3">
           <KpiCard
-            title="Open orders"
+            title="Pending Orders"
             value={isLoading ? "—" : String(data?.kpis.openOrdersCount ?? 0)}
-            hint="Draft/confirmed/shipped"
-            icon={<Activity className="w-5 h-5" />}
+            hint="In-progress"
+            icon={<Activity className="w-6 h-6" />}
             tone="accent"
           />
         </div>
       </div>
 
-      <div className="row g-3 g-lg-4 mt-1">
-        <div className="col-12 col-lg-7">
-          <GlassCard testId="dashboard-recent-orders">
-            <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
+      <div className="row g-4 mt-4">
+        <div className="col-12 col-lg-8">
+          <GlassCard testId="dashboard-recent-orders" className="border-0 shadow-sm overflow-hidden p-0">
+            <div className="p-4 d-flex align-items-center justify-content-between border-bottom">
               <div>
-                <div className="fw-bold" style={{ fontFamily: "var(--font-display)", fontSize: 18 }}>
-                  Recent Orders
-                </div>
-                <div className="text-muted small">Latest activity on your desk.</div>
+                <h5 className="fw-black text-dark mb-1">Recent Activity</h5>
+                <p className="text-muted small mb-0">The latest orders processed through the system.</p>
               </div>
-              <Link href="/orders" className="btn btn-outline-primary btn-sm" data-testid="dashboard-view-all-orders">
-                View all
+              <Link href="/orders" className="btn btn-sm btn-ghost-primary rounded-pill px-3" data-testid="dashboard-view-all-orders">
+                View All Activity <ArrowRight className="w-3.5 h-3.5 ms-1" />
               </Link>
             </div>
 
             {isLoading || meLoading ? (
-              <div className="py-4">
-                <div className="placeholder-glow mb-2">
-                  <span className="placeholder col-12 rounded-3"></span>
-                </div>
-                <div className="placeholder-glow mb-2">
-                  <span className="placeholder col-10 rounded-3"></span>
-                </div>
-                <div className="placeholder-glow">
-                  <span className="placeholder col-11 rounded-3"></span>
-                </div>
+              <div className="p-4 vstack gap-3">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="placeholder-glow">
+                    <div className="placeholder col-12 rounded-3 h-10" />
+                  </div>
+                ))}
               </div>
             ) : error ? (
-              <div className="alert alert-danger mb-0" role="alert" data-testid="dashboard-error">
-                {(error as Error).message}
+              <div className="p-4">
+                <div className="alert alert-danger mb-0 rounded-4 border-0" role="alert" data-testid="dashboard-error">
+                  {(error as Error).message}
+                </div>
               </div>
             ) : (data?.recentOrders?.length ?? 0) === 0 ? (
-              <div className="text-muted py-4" data-testid="dashboard-empty">
-                No recent orders yet.
+              <div className="p-5 text-center" data-testid="dashboard-empty">
+                <Clock className="w-12 h-12 text-muted opacity-20 mx-auto mb-3" />
+                <h6 className="text-muted fw-bold">No recent activity</h6>
+                <p className="text-muted small">New orders will appear here as they are created.</p>
               </div>
             ) : (
               <div className="table-responsive">
-                <table className="table align-middle mb-0">
-                  <thead>
-                    <tr className="text-muted small">
-                      <th>Order</th>
-                      <th>Customer</th>
-                      <th>Status</th>
-                      <th className="text-end">Total</th>
-                      <th className="text-end">Open</th>
+                <table className="table table-hover align-middle mb-0">
+                  <thead className="bg-light">
+                    <tr className="text-muted small border-0">
+                      <th className="px-4 py-3 border-0 text-uppercase fw-bold">Order ID</th>
+                      <th className="py-3 border-0 text-uppercase fw-bold">Customer</th>
+                      <th className="py-3 border-0 text-uppercase fw-bold">Status</th>
+                      <th className="py-3 border-0 text-uppercase fw-bold text-end">Grand Total</th>
+                      <th className="px-4 py-3 border-0 text-end"></th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="border-0">
                     {data!.recentOrders.slice(0, 8).map((o) => (
-                      <tr key={o.id}>
-                        <td className="fw-semibold">#{o.orderNo}</td>
-                        <td>{o.customerName}</td>
-                        <td>
-                          <span
-                            className="badge rounded-pill"
-                            style={{
-                              background:
-                                o.status === "delivered"
-                                  ? "hsl(152 52% 42% / .14)"
-                                  : o.status === "cancelled"
-                                    ? "hsl(var(--destructive) / .14)"
-                                    : "hsl(var(--accent) / .14)",
-                              color:
-                                o.status === "delivered"
-                                  ? "hsl(152 52% 42%)"
-                                  : o.status === "cancelled"
-                                    ? "hsl(var(--destructive))"
-                                    : "hsl(var(--accent))",
-                              border: "1px solid hsl(var(--border) / 1)",
-                            }}
-                          >
-                            {o.status}
-                          </span>
+                      <tr key={o.id} className="border-0">
+                        <td className="px-4 py-3 border-bottom-0 fw-bold text-dark">#{o.orderNo}</td>
+                        <td className="py-3 border-bottom-0 text-muted">{o.customerName}</td>
+                        <td className="py-3 border-bottom-0">
+                          <StatusBadge status={o.status ?? "pending"} />
                         </td>
-                        <td className="text-end fw-semibold">{formatMoney(Number(o.total))}</td>
-                        <td className="text-end">
-                          <Link href={`/orders/${o.id}`} className="btn btn-sm btn-outline-primary" data-testid={`dashboard-open-order-${o.id}`}>
-                            Open
+                        <td className="py-3 border-bottom-0 text-end fw-bold text-dark">
+                          {formatCurrency(o.total)}
+                        </td>
+                        <td className="px-4 py-3 border-bottom-0 text-end">
+                          <Link href={`/orders/${o.id}`} className="btn btn-sm btn-icon btn-ghost-primary rounded-circle" data-testid={`dashboard-open-order-${o.id}`}>
+                            <ArrowRight className="w-4 h-4" />
                           </Link>
                         </td>
                       </tr>
@@ -219,64 +215,58 @@ export default function Dashboard() {
           </GlassCard>
         </div>
 
-        <div className="col-12 col-lg-5">
-          <div className="row g-3">
-            <div className="col-12">
-              <GlassCard testId="dashboard-cashflow">
-                <div className="d-flex align-items-center justify-content-between gap-3">
-                  <div>
-                    <div className="fw-bold" style={{ fontFamily: "var(--font-display)", fontSize: 18 }}>
-                      30-day Cashflow
-                    </div>
-                    <div className="text-muted small">Sales vs payments recorded.</div>
-                  </div>
-                </div>
+        <div className="col-12 col-lg-4">
+          <div className="vstack gap-4 sticky-top" style={{ top: '2rem' }}>
+            <GlassCard testId="dashboard-cashflow" className="border-0 shadow-sm p-4">
+              <h5 className="fw-black text-dark mb-1">Financial Pulse</h5>
+              <p className="text-muted small mb-4">Activity from the last 30 days.</p>
 
-                <div className="row g-3 mt-1">
-                  <div className="col-6">
-                    <div className="rounded-4 p-3" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
-                      <div className="text-muted small">Sales</div>
-                      <div className="fw-bold mt-1" style={{ fontSize: 20 }}>
-                        {isLoading ? "—" : formatMoney(Number(data?.kpis.sales30d ?? 0))}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="col-6">
-                    <div className="rounded-4 p-3" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
-                      <div className="text-muted small">Payments</div>
-                      <div className="fw-bold mt-1" style={{ fontSize: 20 }}>
-                        {isLoading ? "—" : formatMoney(Number(data?.kpis.payments30d ?? 0))}
-                      </div>
+              <div className="row g-3">
+                <div className="col-6">
+                  <div className="p-3 bg-light rounded-4 border">
+                    <div className="text-muted small fw-medium">Gross Sales</div>
+                    <div className="fw-black text-dark mt-1" style={{ fontSize: '1.25rem' }}>
+                      {isLoading ? "—" : formatCurrency(data?.kpis.sales30d ?? 0)}
                     </div>
                   </div>
                 </div>
+                <div className="col-6">
+                  <div className="p-3 bg-light rounded-4 border text-end">
+                    <div className="text-muted small fw-medium">Recovered</div>
+                    <div className="fw-black text-success mt-1" style={{ fontSize: '1.25rem' }}>
+                      {isLoading ? "—" : formatCurrency(data?.kpis.payments30d ?? 0)}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-                <div className="mt-3 d-flex flex-wrap gap-2">
-                  <Link href="/payments" className="btn btn-primary pb-sheen" data-testid="dashboard-record-payment">
-                    <CreditCard className="w-4 h-4 me-2" />
-                    Record payment
-                  </Link>
-                  <Link href="/orders/new" className="btn btn-outline-primary" data-testid="dashboard-create-order">
-                    <Receipt className="w-4 h-4 me-2" />
-                    New order
-                  </Link>
-                </div>
-              </GlassCard>
-            </div>
+              <div className="vstack gap-2 mt-4">
+                <Link href="/payments" className="btn btn-primary pb-sheen w-100 py-2.5 fw-bold shadow-sm" data-testid="dashboard-record-payment">
+                  <CreditCard className="w-4 h-4 me-2" />
+                  Record New Payment
+                </Link>
+                <Link href="/orders/new" className="btn btn-outline-primary w-100 py-2.5 fw-bold" data-testid="dashboard-create-order">
+                  <Receipt className="w-4 h-4 me-2" />
+                  Create Manual Order
+                </Link>
+              </div>
+            </GlassCard>
 
-            <div className="col-12">
-              <GlassCard testId="dashboard-role-card">
-                <div className="fw-bold" style={{ fontFamily: "var(--font-display)", fontSize: 18 }}>
-                  Your access
-                </div>
-                <div className="text-muted mt-2" style={{ lineHeight: 1.6 }}>
-                  {me?.role === "admin" && "Full system access: manage users, books, customers, orders, and payments."}
-                  {me?.role === "salesman" && "Sales access: manage assigned customers, create orders, and record payments."}
-                  {me?.role === "customer" && "Customer access: view your profile, orders, and payment history."}
-                  {!me && "Sign in to see your access level."}
-                </div>
-              </GlassCard>
-            </div>
+            <GlassCard testId="dashboard-role-card" className="border-0 shadow-sm p-4 bg-primary text-white overflow-hidden position-relative">
+              <div className="position-absolute top-0 end-0 p-3 opacity-10">
+                <Users className="w-24 h-24" />
+              </div>
+              <h6 className="text-white-50 text-uppercase fw-black small mb-2" style={{ letterSpacing: '1px' }}>System Role</h6>
+              <h4 className="fw-black mb-3">
+                {me?.role === "admin" ? "Administrator" : me?.role === "salesman" ? "Sales Representative" : "Customer Portal"}
+              </h4>
+              <p className="mb-0 opacity-75 small leading-relaxed">
+                {me?.role === "admin" && "Complete oversight of inventory, financial data, and user management modules."}
+                {me?.role === "salesman" && "Focus on customer relationship management, order generation, and payment tracking."}
+                {me?.role === "customer" && "Secure gateway to view personal purchase history and manage account settlements."}
+                {!me && "Authentication required to access system modules."}
+              </p>
+            </GlassCard>
           </div>
         </div>
       </div>

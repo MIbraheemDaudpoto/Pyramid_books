@@ -10,14 +10,11 @@ import { useToast } from "@/hooks/use-toast";
 import { redirectToLogin } from "@/lib/auth-utils";
 import type { CreateBookRequest, UpdateBookRequest } from "@shared/schema";
 import { BOOK_CATEGORIES } from "@shared/schema";
-import { BookOpen, Plus, Search, Trash2, Pencil, AlertTriangle, Filter } from "lucide-react";
+import { BookOpen, Plus, Search, Trash2, Pencil, AlertTriangle, Filter, Tag, Hash, User, Building, Info, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { z } from "zod";
-
-function money(n: any) {
-  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(Number(n || 0));
-}
+import { formatCurrency, cn } from "@/lib/utils";
 
 const bookFormSchema = z.object({
   isbn: z.string().optional().or(z.literal("")),
@@ -196,69 +193,74 @@ export default function BooksPage() {
 
       <SectionHeader
         title="Books"
-        subtitle="Catalog, pricing, and stock signals. Low-stock toggles help you reorder before you miss a shipment."
+        subtitle="Catalog, pricing, and stock signals. Keep track of your inventory levels."
         right={
           <div className="d-flex flex-wrap gap-2">
             <button
-              className="btn btn-outline-primary d-inline-flex align-items-center gap-2"
+              className={cn(
+                "btn d-inline-flex align-items-center gap-2 border-2 px-3 fw-medium",
+                lowStock ? "btn-primary shadow-sm" : "btn-outline-primary"
+              )}
               onClick={() => setLowStock((v) => !v)}
               data-testid="books-toggle-lowstock"
             >
-              <Filter className="w-4 h-4" />
-              Low stock {lowStock ? "On" : "Off"}
+              <AlertTriangle className="w-4 h-4" />
+              Low Stock Only
             </button>
             {(isAdmin || me?.role === "salesman") && (
-              <button className="btn btn-primary pb-sheen d-inline-flex align-items-center gap-2" onClick={openCreate} data-testid="books-create">
+              <button className="btn btn-primary pb-sheen d-inline-flex align-items-center gap-2 px-4 shadow-sm" onClick={openCreate} data-testid="books-create">
                 <Plus className="w-4 h-4" />
-                Add book
+                Add Book
               </button>
             )}
           </div>
         }
       />
 
-      <GlassCard>
-        <div className="row g-2 g-md-3 align-items-end">
-          <div className="col-12 col-md-6">
-            <label className="form-label small text-muted">Search</label>
-            <div className="input-group">
-              <span className="input-group-text bg-transparent" style={{ borderColor: "hsl(var(--input))" }}>
-                <Search className="w-4 h-4" />
+      <GlassCard className="border-0 shadow-sm p-3 mb-4">
+        <div className="row g-3">
+          <div className="col-12 col-lg-6">
+            <div className="input-group input-group-lg bg-light rounded-4 overflow-hidden border-0">
+              <span className="input-group-text bg-transparent border-0 ps-3">
+                <Search className="w-5 h-5 text-muted" />
               </span>
               <input
-                className="form-control"
-                placeholder="Title, ISBN, author…"
+                className="form-control border-0 bg-transparent py-3 shadow-none fw-medium"
+                placeholder="Search by title, author, or ISBN…"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 data-testid="books-search"
               />
-              <button className="btn btn-outline-primary" onClick={() => setQ("")} data-testid="books-clear-search">
-                Clear
-              </button>
+              {q && (
+                <button className="btn btn-link text-muted pe-3 text-decoration-none" onClick={() => setQ("")} data-testid="books-clear-search">
+                  Clear
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="col-12 col-md-4">
-            <label className="form-label small text-muted">Category</label>
-            <select
-              className="form-select"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              data-testid="books-category"
-            >
-              <option value="">All categories</option>
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+          <div className="col-12 col-md-8 col-lg-4">
+            <div className="d-flex align-items-center h-100 bg-light rounded-4 px-3">
+              <Filter className="w-4 h-4 text-muted shrink-0 me-2" />
+              <select
+                className="form-select border-0 bg-transparent shadow-none fw-medium py-3"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                data-testid="books-category"
+              >
+                <option value="">All Categories</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="col-12 col-md-2">
-            <label className="form-label small text-muted">Actions</label>
+          <div className="col-12 col-md-4 col-lg-2">
             <button
-              className="btn btn-outline-primary w-100"
+              className="btn btn-outline-secondary w-100 py-3 rounded-4 border-2 fw-bold d-flex align-items-center justify-content-center gap-2"
               onClick={() => {
                 setQ("");
                 setCategory("");
@@ -266,7 +268,7 @@ export default function BooksPage() {
               }}
               data-testid="books-reset-filters"
             >
-              Reset
+              Reset Filters
             </button>
           </div>
         </div>
@@ -274,29 +276,32 @@ export default function BooksPage() {
 
       <div className="mt-4">
         {isLoading ? (
-          <GlassCard>
-            <div className="placeholder-glow">
-              <span className="placeholder col-12 rounded-3" style={{ height: 18, display: "block" }} />
-              <span className="placeholder col-10 rounded-3 mt-2" style={{ height: 18, display: "block" }} />
-              <span className="placeholder col-11 rounded-3 mt-2" style={{ height: 18, display: "block" }} />
+          <GlassCard className="border-0">
+            <div className="placeholder-glow vstack gap-3">
+              <div className="placeholder col-12 rounded-3" style={{ height: 60 }} />
+              <div className="placeholder col-12 rounded-3" style={{ height: 60 }} />
+              <div className="placeholder col-12 rounded-3" style={{ height: 60 }} />
             </div>
           </GlassCard>
         ) : error ? (
-          <div className="alert alert-danger" role="alert" data-testid="books-error">
-            {(error as Error).message}
-          </div>
+          <GlassCard className="border-danger/20 text-center py-5">
+            <XCircle className="w-12 h-12 text-danger mx-auto mb-3 opacity-20" />
+            <h5 className="fw-bold text-danger">Error Loading Catalog</h5>
+            <p className="text-secondary">{(error as Error).message}</p>
+            <button className="btn btn-outline-danger mt-2 px-4 shadow-sm" onClick={() => window.location.reload()}>Retry</button>
+          </GlassCard>
         ) : (data?.length ?? 0) === 0 ? (
           <EmptyState
-            icon={<BookOpen className="w-6 h-6 text-muted" />}
-            title="No books found"
-            description="Try adjusting filters, or add your first title to start tracking stock and orders."
+            icon={<BookOpen className="w-12 h-12 text-muted opacity-20" />}
+            title="Catalog is empty"
+            description="No books match your current filters. Try relaxing your search criteria."
             action={
               isAdmin ? (
-                <button className="btn btn-primary pb-sheen" onClick={openCreate} data-testid="books-empty-add">
-                  Add a book
+                <button className="btn btn-primary pb-sheen px-4" onClick={openCreate} data-testid="books-empty-add">
+                  Add a Book
                 </button>
               ) : (
-                <button className="btn btn-outline-primary" onClick={() => window.location.reload()} data-testid="books-empty-refresh">
+                <button className="btn btn-outline-primary px-4" onClick={() => window.location.reload()} data-testid="books-empty-refresh">
                   Refresh
                 </button>
               )
@@ -304,68 +309,88 @@ export default function BooksPage() {
             testId="books-empty"
           />
         ) : (
-          <GlassCard testId="books-table">
+          <GlassCard testId="books-table" className="border-0 shadow-sm overflow-hidden p-0">
             <div className="table-responsive">
-              <table className="table align-middle mb-0">
-                <thead>
-                  <tr className="text-muted small">
-                    <th style={{ minWidth: 260 }}>Title</th>
-                    <th className="d-none d-lg-table-cell">Author</th>
-                    <th>Category</th>
-                    <th className="text-end">Price</th>
-                    <th className="text-end">Stock</th>
-                    <th className="text-end d-none d-xl-table-cell">Reorder</th>
-                    <th className="text-end" style={{ width: 150 }}>Actions</th>
+              <table className="table table-hover align-middle mb-0">
+                <thead className="bg-light">
+                  <tr className="text-muted small border-0">
+                    <th className="px-4 py-3 border-0 text-uppercase fw-bold" style={{ minWidth: 280 }}>Book Details</th>
+                    <th className="py-3 border-0 text-uppercase fw-bold d-none d-lg-table-cell">Category</th>
+                    <th className="py-3 border-0 text-uppercase fw-bold text-end">Price</th>
+                    <th className="py-3 border-0 text-uppercase fw-bold text-center">In Stock</th>
+                    <th className="px-4 py-3 border-0 text-uppercase fw-bold text-end" style={{ width: 140 }}>Actions</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="border-0">
                   {data!.map((b) => {
                     const low = Number(b.stockQty) <= Number(b.reorderLevel);
                     return (
-                      <tr key={b.id}>
-                        <td>
-                          <div className="fw-semibold">{b.title}</div>
-                          <div className="text-muted small">
-                            {b.isbn ? `ISBN ${b.isbn}` : "No ISBN"} • {b.publisher ?? "Publisher —"}
+                      <tr key={b.id} className="border-0">
+                        <td className="px-4 py-3 border-bottom-0">
+                          <div className="d-flex align-items-center gap-3">
+                            <div className="p-3 bg-light rounded-4 text-primary shrink-0 d-none d-sm-block">
+                              <BookOpen className="w-6 h-6" />
+                            </div>
+                            <div>
+                              <div className="fw-bold text-dark fs-6">{b.title}</div>
+                              <div className="text-muted small d-flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                                <span className="d-flex align-items-center gap-1">
+                                  <User className="w-3 h-3" /> {b.author || 'Unknown Author'}
+                                </span>
+                                {b.isbn && (
+                                  <span className="d-flex align-items-center gap-1">
+                                    <Hash className="w-3 h-3" /> {b.isbn}
+                                  </span>
+                                )}
+                                {b.publisher && (
+                                  <span className="d-flex align-items-center gap-1">
+                                    <Building className="w-3 h-3" /> {b.publisher}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </td>
-                        <td className="d-none d-lg-table-cell">{b.author ?? "—"}</td>
-                        <td>
-                          <span className="badge rounded-pill text-bg-light border">{b.category ?? "Uncategorized"}</span>
-                        </td>
-                        <td className="text-end fw-semibold">{money(b.unitPrice)}</td>
-                        <td className="text-end">
-                          <span
-                            className="badge rounded-pill"
-                            style={{
-                              background: low ? "hsl(var(--primary) / .14)" : "hsl(152 52% 42% / .14)",
-                              color: low ? "hsl(var(--primary))" : "hsl(152 52% 42%)",
-                              border: "1px solid hsl(var(--border))",
-                            }}
-                          >
-                            {b.stockQty}
-                            {low ? " • low" : ""}
+                        <td className="py-3 border-bottom-0 d-none d-lg-table-cell">
+                          <span className="badge rounded-pill bg-light text-dark border px-2 py-1.5 fw-medium d-inline-flex align-items-center gap-1">
+                            <Tag className="w-3 h-3 text-muted" />
+                            {b.category ?? "Uncategorized"}
                           </span>
                         </td>
-                        <td className="text-end d-none d-xl-table-cell">{b.reorderLevel}</td>
-                        <td className="text-end">
-                          <div className="d-inline-flex gap-2">
+                        <td className="py-3 border-bottom-0 text-end">
+                          <div className="fw-bold text-primary">{formatCurrency(b.unitPrice)}</div>
+                        </td>
+                        <td className="py-3 border-bottom-0 text-center">
+                          <div className={cn(
+                            "badge rounded-pill d-inline-flex flex-column align-items-center gap-1 px-3 py-2 border",
+                            low ? "bg-warning-subtle text-warning-emphasis border-warning-subtle" : "bg-success-subtle text-success-emphasis border-success-subtle"
+                          )}>
+                            <div className="d-flex align-items-center gap-1">
+                              {low ? <AlertCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                              <span className="fs-6 fw-bold">{b.stockQty}</span>
+                            </div>
+                            <span className="text-uppercase fw-bold" style={{ fontSize: '0.6rem', letterSpacing: '0.4px' }}>
+                              {low ? "Low Stock" : "In Stock"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 border-bottom-0 text-end">
+                          <div className="d-inline-flex gap-1">
                             <button
-                              className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2"
+                              className="btn btn-icon btn-ghost-primary rounded-circle"
                               onClick={() => openEdit(b.id)}
                               disabled={!isAdmin && me?.role !== "salesman"}
                               data-testid={`books-edit-${b.id}`}
-                              title={(isAdmin || me?.role === "salesman") ? "Edit book" : "Admins only"}
+                              title="Edit Details"
                             >
                               <Pencil className="w-4 h-4" />
-                              <span className="d-none d-lg-inline">Edit</span>
                             </button>
                             <button
-                              className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-2"
+                              className="btn btn-icon btn-ghost-danger rounded-circle"
                               onClick={() => askDelete(b.id)}
                               disabled={!isAdmin}
                               data-testid={`books-delete-${b.id}`}
-                              title={isAdmin ? "Delete book" : "Admins only"}
+                              title="Delete Title"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -378,137 +403,197 @@ export default function BooksPage() {
               </table>
             </div>
             {!isAdmin && (
-              <div className="text-muted small mt-3 d-flex align-items-center gap-2">
-                <AlertTriangle className="w-4 h-4" />
-                You have read-only access to the catalog.
+              <div className="px-4 py-3 bg-light border-top d-flex align-items-center gap-2 text-muted small">
+                <AlertCircle className="w-4 h-4" />
+                <span>You have read-only access to the catalog management features.</span>
               </div>
             )}
           </GlassCard>
         )}
       </div>
 
+      {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-2xl" data-testid="books-create-dialog">
-          <DialogHeader>
-            <DialogTitle>Add Book</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-2xl border-0 shadow-lg rounded-4 overflow-hidden p-0" data-testid="books-create-dialog">
+          <div className="bg-primary p-4 text-white">
+            <h5 className="fw-bold mb-0 d-flex align-items-center gap-2">
+              <Plus className="w-6 h-6" />
+              Add New Book
+            </h5>
+            <p className="text-white-50 small mb-0 mt-1">Add a new title to your bookstore inventory.</p>
+          </div>
 
-          <div className="row g-3">
-            <div className="col-12 col-md-8">
-              <label className="form-label">Title</label>
-              <input className="form-control" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} data-testid="book-form-title" />
-            </div>
-            <div className="col-12 col-md-4">
-              <label className="form-label">ISBN</label>
-              <input className="form-control" value={form.isbn ?? ""} onChange={(e) => setForm((p) => ({ ...p, isbn: e.target.value }))} data-testid="book-form-isbn" />
+          <div className="p-4 bg-white">
+            <div className="row g-4">
+              <div className="col-12 col-md-8">
+                <label className="form-label small fw-bold text-muted text-uppercase mb-1">Book Title</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-0"><BookOpen className="w-4 h-4" /></span>
+                  <input className="form-control bg-light border-0" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} data-testid="book-form-title" />
+                </div>
+              </div>
+              <div className="col-12 col-md-4">
+                <label className="form-label small fw-bold text-muted text-uppercase mb-1">ISBN</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-0"><Hash className="w-4 h-4" /></span>
+                  <input className="form-control bg-light border-0" value={form.isbn ?? ""} onChange={(e) => setForm((p) => ({ ...p, isbn: e.target.value }))} data-testid="book-form-isbn" />
+                </div>
+              </div>
+
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-bold text-muted text-uppercase mb-1">Author</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-0"><User className="w-4 h-4" /></span>
+                  <input className="form-control bg-light border-0" value={form.author ?? ""} onChange={(e) => setForm((p) => ({ ...p, author: e.target.value }))} data-testid="book-form-author" />
+                </div>
+              </div>
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-bold text-muted text-uppercase mb-1">Publisher</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-0"><Building className="w-4 h-4" /></span>
+                  <input className="form-control bg-light border-0" value={form.publisher ?? ""} onChange={(e) => setForm((p) => ({ ...p, publisher: e.target.value }))} data-testid="book-form-publisher" />
+                </div>
+              </div>
+
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-bold text-muted text-uppercase mb-1">Category</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-0"><Tag className="w-4 h-4" /></span>
+                  <select className="form-select bg-light border-0" value={form.category ?? ""} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} data-testid="book-form-category">
+                    <option value="">Select Category</option>
+                    {BOOK_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="col-12 col-md-6">
+                <div className="row g-2">
+                  <div className="col-6">
+                    <label className="form-label small fw-bold text-muted text-uppercase mb-1">Unit Price</label>
+                    <input type="number" step="0.01" className="form-control bg-light border-0" value={form.unitPrice} onChange={(e) => setForm((p) => ({ ...p, unitPrice: Number(e.target.value) }))} data-testid="book-form-unitPrice" />
+                  </div>
+                  <div className="col-3">
+                    <label className="form-label small fw-bold text-muted text-uppercase mb-1">Stock</label>
+                    <input type="number" className="form-control bg-light border-0" value={form.stockQty} onChange={(e) => setForm((p) => ({ ...p, stockQty: Number(e.target.value) }))} data-testid="book-form-stockQty" />
+                  </div>
+                  <div className="col-3">
+                    <label className="form-label small fw-bold text-muted text-uppercase mb-1">Reorder</label>
+                    <input type="number" className="form-control bg-light border-0" value={form.reorderLevel} onChange={(e) => setForm((p) => ({ ...p, reorderLevel: Number(e.target.value) }))} data-testid="book-form-reorderLevel" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-12">
+                <label className="form-label small fw-bold text-muted text-uppercase mb-1">Description</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-0 align-items-start pt-2"><Info className="w-4 h-4" /></span>
+                  <textarea className="form-control bg-light border-0" rows={3} value={form.description ?? ""} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} data-testid="book-form-description" />
+                </div>
+              </div>
             </div>
 
-            <div className="col-12 col-md-6">
-              <label className="form-label">Author</label>
-              <input className="form-control" value={form.author ?? ""} onChange={(e) => setForm((p) => ({ ...p, author: e.target.value }))} data-testid="book-form-author" />
-            </div>
-            <div className="col-12 col-md-6">
-              <label className="form-label">Publisher</label>
-              <input className="form-control" value={form.publisher ?? ""} onChange={(e) => setForm((p) => ({ ...p, publisher: e.target.value }))} data-testid="book-form-publisher" />
-            </div>
-
-            <div className="col-12 col-md-6">
-              <label className="form-label">Category</label>
-              <select className="form-select" value={form.category ?? ""} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} data-testid="book-form-category">
-                <option value="">Select category</option>
-                {BOOK_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-12 col-md-3">
-              <label className="form-label">Unit price</label>
-              <input type="number" step="0.01" className="form-control" value={form.unitPrice} onChange={(e) => setForm((p) => ({ ...p, unitPrice: Number(e.target.value) }))} data-testid="book-form-unitPrice" />
-            </div>
-            <div className="col-6 col-md-1">
-              <label className="form-label">Stock</label>
-              <input type="number" className="form-control" value={form.stockQty} onChange={(e) => setForm((p) => ({ ...p, stockQty: Number(e.target.value) }))} data-testid="book-form-stockQty" />
-            </div>
-            <div className="col-6 col-md-2">
-              <label className="form-label">Reorder</label>
-              <input type="number" className="form-control" value={form.reorderLevel} onChange={(e) => setForm((p) => ({ ...p, reorderLevel: Number(e.target.value) }))} data-testid="book-form-reorderLevel" />
-            </div>
-
-            <div className="col-12">
-              <label className="form-label">Description</label>
-              <textarea className="form-control" rows={3} value={form.description ?? ""} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} data-testid="book-form-description" />
-            </div>
-
-            <div className="col-12 d-flex justify-content-end gap-2 mt-1">
-              <button className="btn btn-outline-primary" onClick={() => setCreateOpen(false)} data-testid="book-form-cancel">
+            <div className="d-flex justify-content-end gap-3 mt-5">
+              <button className="btn btn-outline-secondary border-2 px-4 fw-bold" onClick={() => setCreateOpen(false)} data-testid="book-form-cancel">
                 Cancel
               </button>
-              <button className="btn btn-primary pb-sheen" onClick={submitCreate} disabled={createMutation.isPending} data-testid="book-form-submit">
-                {createMutation.isPending ? "Creating…" : "Create"}
+              <button className="btn btn-primary pb-sheen px-5 shadow-sm fw-bold" onClick={submitCreate} disabled={createMutation.isPending} data-testid="book-form-submit">
+                {createMutation.isPending ? <span className="spinner-border spinner-border-sm me-2" /> : null}
+                Create Book
               </button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
+      {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-2xl" data-testid="books-edit-dialog">
-          <DialogHeader>
-            <DialogTitle>Edit Book</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-2xl border-0 shadow-lg rounded-4 overflow-hidden p-0" data-testid="books-edit-dialog">
+          <div className="bg-primary p-4 text-white">
+            <h5 className="fw-bold mb-0 d-flex align-items-center gap-2">
+              <Pencil className="w-6 h-6" />
+              Edit Book Details
+            </h5>
+            <p className="text-white-50 small mb-0 mt-1">Modify information for "{form.title}".</p>
+          </div>
 
-          <div className="row g-3">
-            <div className="col-12 col-md-8">
-              <label className="form-label">Title</label>
-              <input className="form-control" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} data-testid="book-edit-title" />
-            </div>
-            <div className="col-12 col-md-4">
-              <label className="form-label">ISBN</label>
-              <input className="form-control" value={form.isbn ?? ""} onChange={(e) => setForm((p) => ({ ...p, isbn: e.target.value }))} data-testid="book-edit-isbn" />
+          <div className="p-4 bg-white">
+            <div className="row g-4">
+              <div className="col-12 col-md-8">
+                <label className="form-label small fw-bold text-muted text-uppercase mb-1">Book Title</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-0"><BookOpen className="w-4 h-4" /></span>
+                  <input className="form-control bg-light border-0" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} data-testid="book-edit-title" />
+                </div>
+              </div>
+              <div className="col-12 col-md-4">
+                <label className="form-label small fw-bold text-muted text-uppercase mb-1">ISBN</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-0"><Hash className="w-4 h-4" /></span>
+                  <input className="form-control bg-light border-0" value={form.isbn ?? ""} onChange={(e) => setForm((p) => ({ ...p, isbn: e.target.value }))} data-testid="book-edit-isbn" />
+                </div>
+              </div>
+
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-bold text-muted text-uppercase mb-1">Author</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-0"><User className="w-4 h-4" /></span>
+                  <input className="form-control bg-light border-0" value={form.author ?? ""} onChange={(e) => setForm((p) => ({ ...p, author: e.target.value }))} data-testid="book-edit-author" />
+                </div>
+              </div>
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-bold text-muted text-uppercase mb-1">Publisher</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-0"><Building className="w-4 h-4" /></span>
+                  <input className="form-control bg-light border-0" value={form.publisher ?? ""} onChange={(e) => setForm((p) => ({ ...p, publisher: e.target.value }))} data-testid="book-edit-publisher" />
+                </div>
+              </div>
+
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-bold text-muted text-uppercase mb-1">Category</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-0"><Tag className="w-4 h-4" /></span>
+                  <select className="form-select bg-light border-0" value={form.category ?? ""} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} data-testid="book-edit-category">
+                    <option value="">Select Category</option>
+                    {BOOK_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="col-12 col-md-6">
+                <div className="row g-2">
+                  <div className="col-6">
+                    <label className="form-label small fw-bold text-muted text-uppercase mb-1">Unit Price</label>
+                    <input type="number" step="0.01" className="form-control bg-light border-0" value={form.unitPrice} onChange={(e) => setForm((p) => ({ ...p, unitPrice: Number(e.target.value) }))} data-testid="book-edit-unitPrice" />
+                  </div>
+                  <div className="col-3">
+                    <label className="form-label small fw-bold text-muted text-uppercase mb-1">Stock</label>
+                    <input type="number" className="form-control bg-light border-0" value={form.stockQty} onChange={(e) => setForm((p) => ({ ...p, stockQty: Number(e.target.value) }))} data-testid="book-edit-stockQty" />
+                  </div>
+                  <div className="col-3">
+                    <label className="form-label small fw-bold text-muted text-uppercase mb-1">Reorder</label>
+                    <input type="number" className="form-control bg-light border-0" value={form.reorderLevel} onChange={(e) => setForm((p) => ({ ...p, reorderLevel: Number(e.target.value) }))} data-testid="book-edit-reorderLevel" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-12">
+                <label className="form-label small fw-bold text-muted text-uppercase mb-1">Description</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-0 align-items-start pt-2"><Info className="w-4 h-4" /></span>
+                  <textarea className="form-control bg-light border-0" rows={3} value={form.description ?? ""} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} data-testid="book-edit-description" />
+                </div>
+              </div>
             </div>
 
-            <div className="col-12 col-md-6">
-              <label className="form-label">Author</label>
-              <input className="form-control" value={form.author ?? ""} onChange={(e) => setForm((p) => ({ ...p, author: e.target.value }))} data-testid="book-edit-author" />
-            </div>
-            <div className="col-12 col-md-6">
-              <label className="form-label">Publisher</label>
-              <input className="form-control" value={form.publisher ?? ""} onChange={(e) => setForm((p) => ({ ...p, publisher: e.target.value }))} data-testid="book-edit-publisher" />
-            </div>
-
-            <div className="col-12 col-md-6">
-              <label className="form-label">Category</label>
-              <select className="form-select" value={form.category ?? ""} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} data-testid="book-edit-category">
-                <option value="">Select category</option>
-                {BOOK_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-12 col-md-3">
-              <label className="form-label">Unit price</label>
-              <input type="number" step="0.01" className="form-control" value={form.unitPrice} onChange={(e) => setForm((p) => ({ ...p, unitPrice: Number(e.target.value) }))} data-testid="book-edit-unitPrice" />
-            </div>
-            <div className="col-6 col-md-1">
-              <label className="form-label">Stock</label>
-              <input type="number" className="form-control" value={form.stockQty} onChange={(e) => setForm((p) => ({ ...p, stockQty: Number(e.target.value) }))} data-testid="book-edit-stockQty" />
-            </div>
-            <div className="col-6 col-md-2">
-              <label className="form-label">Reorder</label>
-              <input type="number" className="form-control" value={form.reorderLevel} onChange={(e) => setForm((p) => ({ ...p, reorderLevel: Number(e.target.value) }))} data-testid="book-edit-reorderLevel" />
-            </div>
-
-            <div className="col-12">
-              <label className="form-label">Description</label>
-              <textarea className="form-control" rows={3} value={form.description ?? ""} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} data-testid="book-edit-description" />
-            </div>
-
-            <div className="col-12 d-flex justify-content-end gap-2 mt-1">
-              <button className="btn btn-outline-primary" onClick={() => setEditOpen(false)} data-testid="book-edit-cancel">
+            <div className="d-flex justify-content-end gap-3 mt-5">
+              <button className="btn btn-outline-secondary border-2 px-4 fw-bold" onClick={() => setEditOpen(false)} data-testid="book-edit-cancel">
                 Cancel
               </button>
-              <button className="btn btn-primary pb-sheen" onClick={submitEdit} disabled={updateMutation.isPending} data-testid="book-edit-submit">
-                {updateMutation.isPending ? "Saving…" : "Save changes"}
+              <button className="btn btn-primary pb-sheen px-5 shadow-sm fw-bold" onClick={submitEdit} disabled={updateMutation.isPending} data-testid="book-edit-submit">
+                {updateMutation.isPending ? <span className="spinner-border spinner-border-sm me-2" /> : null}
+                Save Changes
               </button>
             </div>
           </div>
@@ -519,8 +604,8 @@ export default function BooksPage() {
         open={confirmDeleteOpen}
         onOpenChange={setConfirmDeleteOpen}
         title="Delete this book?"
-        description="This removes the title from your catalog. Existing orders may depend on it."
-        confirmText={deleteMutation.isPending ? "Deleting…" : "Delete"}
+        description="This removes the title from your catalog. Existing orders may depend on it. This action cannot be undone."
+        confirmText={deleteMutation.isPending ? "Deleting…" : "Delete Forever"}
         destructive
         onConfirm={confirmDelete}
         testId="books-delete-confirm"

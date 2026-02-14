@@ -51,7 +51,7 @@ export async function generateInvoicePDF(order: OrderWithItemsResponse) {
   try {
     const logoData = await loadImageAsBase64(logoUrl);
     doc.addImage(logoData, "JPEG", margin, y + 2, 36, 12);
-  } catch (_) {}
+  } catch (_) { }
 
   const textOffset = margin + 40;
 
@@ -102,6 +102,20 @@ export async function generateInvoicePDF(order: OrderWithItemsResponse) {
   if (order.customer.phone) {
     y += 5;
     doc.text(order.customer.phone, margin, y);
+  }
+  if (order.customer.address) {
+    y += 5;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Delivery Address:", margin, y);
+    y += 4;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(40, 40, 40);
+    const addressLines = doc.splitTextToSize(order.customer.address, 80);
+    doc.text(addressLines, margin, y);
+    y += addressLines.length * 4;
   }
 
   let detailY = 64;
@@ -172,7 +186,7 @@ export async function generateInvoicePDF(order: OrderWithItemsResponse) {
     },
     margin: { left: margin, right: margin },
     alternateRowStyles: { fillColor: [245, 247, 250] },
-    didDrawPage: () => {},
+    didDrawPage: () => { },
   });
 
   const finalY = (doc as any).lastAutoTable?.finalY ?? y + 40;

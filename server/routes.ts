@@ -64,7 +64,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         newPassword: z.string().min(6, "Password must be at least 6 characters"),
       });
       const input = schema.parse(req.body);
-      
+
       const bcrypt = await import("bcryptjs");
       const user = await storage.getUserWithPassword(userId);
       if (!user || !user.passwordHash) {
@@ -462,7 +462,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const userId = getUserId(req);
       const me = await storage.getCurrentUser(userId);
       if (!me) return res.status(401).json({ message: "Unauthorized" });
-      if (me.role === "customer") return res.status(403).json({ message: "Forbidden" });
 
       const list = await storage.listPaymentsForUser(userId);
       res.json(list);
@@ -977,9 +976,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               lineTotal: Number(it.lineTotal).toFixed(2),
             })),
           };
-          sendNewOrderNotification(recipientEmails, notifData).catch(() => {});
+          sendNewOrderNotification(recipientEmails, notifData).catch(() => { });
         }
-      } catch (_notifErr) {}
+      } catch (_notifErr) { }
     } catch (err: any) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({

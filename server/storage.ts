@@ -422,6 +422,7 @@ export class DatabaseStorage implements IStorage {
         customerType: customers.customerType,
         phone: customers.phone,
         email: customers.email,
+        address: customers.address,
       })
       .from(customers)
       .where(eq(customers.id, o.customerId));
@@ -756,10 +757,10 @@ export class DatabaseStorage implements IStorage {
       customerName: r.customerName,
       receivedByName: r.receivedByUserId
         ? nameOf({
-            firstName: r.receivedByFirstName,
-            lastName: r.receivedByLastName,
-            email: r.receivedByEmail,
-          })
+          firstName: r.receivedByFirstName,
+          lastName: r.receivedByLastName,
+          email: r.receivedByEmail,
+        })
         : null,
     })) as any;
   }
@@ -1761,7 +1762,7 @@ export class DatabaseStorage implements IStorage {
       .insert(customers)
       .values([
         {
-          name: "Cedar Town Books", 
+          name: "Cedar Town Books",
           customerType: "customer",
           phone: "+1 555 0134",
           email: "orders@cedartownbooks.example",
